@@ -1,4 +1,13 @@
+target/
+.mvn/
+!.mvn/wrapper/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+.env
 .DS_Store
-*.swp
 .idea/
+*.iml
 .vscode/
