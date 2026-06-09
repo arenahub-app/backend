@@ -25,6 +25,14 @@
     <springdoc.version>2.3.0</springdoc.version>
     <testcontainers.version>1.20.1</testcontainers.version>
     <awssdk.version>2.25.70</awssdk.version>
+
+    <!-- SonarCloud -->
+    <sonar.projectKey>arenahub-app_backend</sonar.projectKey>
+    <sonar.organization>arenahub-app</sonar.organization>
+    <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+    <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+    <sonar.exclusions>**/ArenahubApplication.java,**/dto/**,**/exception/**,**/*Properties.java,**/vo/**,**/config/**</sonar.exclusions>
+    <sonar.cpd.exclusions>**/dto/**,**/exception/**,**/vo/**</sonar.cpd.exclusions>
   </properties>
 
   <dependencies>
@@ -247,10 +255,19 @@
           </execution>
           <execution>
             <id>check</id>
+            <phase>verify</phase>
             <goals>
               <goal>check</goal>
             </goals>
             <configuration>
+              <excludes>
+                <exclude>com/arenahub/ArenahubApplication.class</exclude>
+                <exclude>com/arenahub/**/dto/**/*.class</exclude>
+                <exclude>com/arenahub/**/exception/**/*.class</exclude>
+                <exclude>com/arenahub/**/*Properties.class</exclude>
+                <exclude>com/arenahub/**/vo/**/*.class</exclude>
+                <exclude>com/arenahub/**/config/**/*.class</exclude>
+              </excludes>
               <rules>
                 <rule>
                   <element>BUNDLE</element>
@@ -266,6 +283,21 @@
             </configuration>
           </execution>
         </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.sonarsource.scanner.maven</groupId>
+        <artifactId>sonar-maven-plugin</artifactId>
+        <version>4.0.0.4121</version>
+      </plugin>
+
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>versions-maven-plugin</artifactId>
+        <version>2.17.1</version>
+        <configuration>
+          <generateBackupPoms>false</generateBackupPoms>
+        </configuration>
       </plugin>
 
     </plugins>

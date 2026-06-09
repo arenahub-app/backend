@@ -1,0 +1,55 @@
+name: PR Check — main
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+concurrency:
+  group: pr-main-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  final-check:
+    name: Final Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build, test & coverage check
+        run: mvn verify -B --no-transfer-progress
+
+      - name: SonarCloud analysis (baseline main)
+        if: ${{ env.SONAR_TOKEN != '' }}
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mvn sonar:sonar -B --no-transfer-progress \
+            -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} \
+            -Dsonar.pullrequest.branch=${{ github.head_ref }} \
+            -Dsonar.pullrequest.base=${{ github.base_ref }}
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-check-${{ github.run_id }}
+          path: |
+            target/surefire-reports/
+            target/site/jacoco/
+          retention-days: 30
