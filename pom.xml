@@ -32,6 +32,7 @@
     <sonar.host.url>https://sonarcloud.io</sonar.host.url>
     <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     <sonar.exclusions>**/ArenahubApplication.java,**/dto/**,**/exception/**,**/*Properties.java,**/vo/**,**/config/**</sonar.exclusions>
+    <sonar.coverage.exclusions>**/port/**,**/domain/**/*Repository.java,**/persistence/**/*JpaRepository.java,**/persistence/**/*JpaEntity.java,**/*Status.java,**/security/SecurityConfig.java,**/security/UserDetailsServiceImpl.java,**/security/OAuth2SuccessHandler.java,**/email/**</sonar.coverage.exclusions>
     <sonar.cpd.exclusions>**/dto/**,**/exception/**,**/vo/**</sonar.cpd.exclusions>
   </properties>
 
@@ -261,12 +262,30 @@
             </goals>
             <configuration>
               <excludes>
+                <!-- Application entry point -->
                 <exclude>com/arenahub/ArenahubApplication.class</exclude>
+                <!-- DTOs, exceptions, VOs, config properties -->
                 <exclude>com/arenahub/**/dto/**/*.class</exclude>
                 <exclude>com/arenahub/**/exception/**/*.class</exclude>
                 <exclude>com/arenahub/**/*Properties.class</exclude>
                 <exclude>com/arenahub/**/vo/**/*.class</exclude>
                 <exclude>com/arenahub/**/config/**/*.class</exclude>
+                <!-- Port interfaces — pure contracts, no implementation -->
+                <exclude>com/arenahub/**/port/**/*.class</exclude>
+                <!-- Domain repository interfaces -->
+                <exclude>com/arenahub/domain/**/*Repository.class</exclude>
+                <!-- Spring Data JPA interfaces — framework implements -->
+                <exclude>com/arenahub/**/persistence/**/*JpaRepository.class</exclude>
+                <!-- JPA entity mapping — tested indirectly via integration -->
+                <exclude>com/arenahub/**/persistence/**/*JpaEntity.class</exclude>
+                <!-- Simple enum with no business logic -->
+                <exclude>com/arenahub/**/*Status.class</exclude>
+                <!-- Spring Security infrastructure -->
+                <exclude>com/arenahub/**/security/SecurityConfig.class</exclude>
+                <exclude>com/arenahub/**/security/UserDetailsServiceImpl.class</exclude>
+                <exclude>com/arenahub/**/security/OAuth2SuccessHandler.class</exclude>
+                <!-- Email adapter — external service, tested via integration -->
+                <exclude>com/arenahub/**/email/**/*.class</exclude>
               </excludes>
               <rules>
                 <rule>

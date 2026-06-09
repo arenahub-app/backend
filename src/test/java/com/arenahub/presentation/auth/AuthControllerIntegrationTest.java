@@ -126,4 +126,38 @@ class AuthControllerIntegrationTest {
         mvc.perform(post(LOGOUT_URL))
                 .andExpect(status().isNoContent());
     }
+
+    @Test
+    void forgotPassword_returns200_forAnyEmail() throws Exception {
+        mvc.perform(post("/api/v1/auth/password/forgot")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "email": "qualquer@example.com" }
+                                """))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void forgotPassword_returns400_forInvalidEmailFormat() throws Exception {
+        mvc.perform(post("/api/v1/auth/password/forgot")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "email": "nao-e-um-email" }
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void resetPassword_returns400_forUnknownToken() throws Exception {
+        mvc.perform(post("/api/v1/auth/password/reset")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "token": "00000000-0000-0000-0000-000000000000",
+                                  "newPassword": "NovaSenha@123"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
 }

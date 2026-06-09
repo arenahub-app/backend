@@ -11,6 +11,7 @@ concurrency:
 
 env:
   MAVEN_OPTS: "-Xmx2g -XX:MaxMetaspaceSize=512m"
+  TESTCONTAINERS_RYUK_DISABLED: "true"
 
 jobs:
   validate:
