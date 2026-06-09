@@ -12,10 +12,14 @@ concurrency:
   group: ci-feature-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  MAVEN_OPTS: "-Xmx2g -XX:MaxMetaspaceSize=512m -XX:+TieredCompilation -XX:TieredStopAtLevel=1"
+
 jobs:
   test:
     name: Build & Test
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
@@ -30,7 +34,7 @@ jobs:
       - name: Build and run tests
         run: mvn verify -B --no-transfer-progress
 
-      - name: Upload test reports
+      - name: Publish test summary
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -44,8 +48,8 @@ jobs:
     name: Open PR → develop
     needs: test
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
-      contents: read
       pull-requests: write
 
     steps:
@@ -55,6 +59,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::warning::PAT_TOKEN não configurado — PR automática desabilitada."
+            exit 0
+          fi
+
           BRANCH="${GITHUB_REF_NAME}"
           LAST_MSG=$(git log -1 --format='%s')
           EXISTING=$(gh pr list --base develop --head "$BRANCH" --state open --json number --jq length)

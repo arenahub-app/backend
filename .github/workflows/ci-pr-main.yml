@@ -13,10 +13,14 @@ concurrency:
   group: pr-main-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
+env:
+  MAVEN_OPTS: "-Xmx2g -XX:MaxMetaspaceSize=512m"
+
 jobs:
   final-check:
     name: Final Validation
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v4
@@ -33,7 +37,7 @@ jobs:
       - name: Build, test & coverage check
         run: mvn verify -B --no-transfer-progress
 
-      - name: SonarCloud analysis (baseline main)
+      - name: SonarCloud analysis
         if: ${{ env.SONAR_TOKEN != '' }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -44,7 +48,7 @@ jobs:
             -Dsonar.pullrequest.branch=${{ github.head_ref }} \
             -Dsonar.pullrequest.base=${{ github.base_ref }}
 
-      - name: Upload test reports
+      - name: Upload reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
