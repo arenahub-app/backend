@@ -1,4 +1,16 @@
 spring:
+  mail:
+    host: localhost
+    port: 3025
+    username: ""
+    password: ""
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+
   datasource:
     url: jdbc:tc:postgresql:16:///arenahub_test
     driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
@@ -12,6 +24,15 @@ spring:
         format_sql: true
 
 arenahub:
+  frontend:
+    base-url: http://localhost:5173
+
+  cors:
+    allowed-origins: http://localhost:5173
+
+  mail:
+    from: test@arenahub.app
+
   jwt:
     secret: test-secret-key-must-be-at-least-256-bits-long-for-hs256-algorithm
     access-token-expiration-minutes: 15

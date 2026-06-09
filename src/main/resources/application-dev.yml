@@ -1,4 +1,16 @@
 spring:
+  mail:
+    host: localhost
+    port: 1025
+    username: ""
+    password: ""
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+
   datasource:
     url: jdbc:postgresql://localhost:5432/arenahub_dev
     username: arenahub
@@ -26,6 +38,15 @@ logging:
     org.hibernate.orm.jdbc.bind: TRACE
 
 arenahub:
+  frontend:
+    base-url: http://localhost:5173
+
+  cors:
+    allowed-origins: http://localhost:5173,http://localhost:8081
+
+  mail:
+    from: dev@arenahub.app
+
   jwt:
     secret: dev-secret-key-must-be-at-least-256-bits-long-for-hs256-algorithm
     access-token-expiration-minutes: 60

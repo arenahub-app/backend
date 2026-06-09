@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Confirme seu email</title>
+</head>
+<body style="font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 20px;">
+  <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 8px; padding: 32px;">
+    <h2 style="color: #1a1a2e;">Bem-vindo ao ArenaHub!</h2>
+    <p>Clique no botão abaixo para confirmar seu endereço de email. O link expira em <strong>24 horas</strong>.</p>
+    <a th:href="${verificationUrl}"
+       style="display:inline-block; background:#4361ee; color:#fff; padding:12px 24px;
+              border-radius:6px; text-decoration:none; font-weight:bold; margin:16px 0;">
+      Confirmar email
+    </a>
+    <p style="color:#888; font-size:13px;">
+      Se você não criou uma conta no ArenaHub, ignore este email.
+    </p>
+  </div>
+</body>
+</html>
