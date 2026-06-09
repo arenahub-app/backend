@@ -1,0 +1,67 @@
+spring:
+  mail:
+    host: localhost
+    port: 1025
+    username: ""
+    password: ""
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/arenahub_dev
+    username: arenahub
+    password: arenahub
+
+  jpa:
+    properties:
+      hibernate:
+        format_sql: true
+        show_sql: false
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: dev-client-id
+            client-secret: dev-client-secret
+
+logging:
+  level:
+    com.arenahub: DEBUG
+    org.flywaydb: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+
+arenahub:
+  frontend:
+    base-url: http://localhost:5173
+
+  cors:
+    allowed-origins: http://localhost:5173,http://localhost:8081
+
+  mail:
+    from: dev@arenahub.app
+
+  jwt:
+    secret: dev-secret-key-must-be-at-least-256-bits-long-for-hs256-algorithm
+    access-token-expiration-minutes: 60
+    refresh-token-expiration-days: 30
+
+  storage:
+    r2:
+      endpoint: http://localhost:9000
+      access-key: minioadmin
+      secret-key: minioadmin
+      bucket: arenahub-dev
+      public-url: http://localhost:9000/arenahub-dev
+
+  ai:
+    validation:
+      url: http://localhost:9001/validate
+      api-key: dev-key
+      timeout-seconds: 30
