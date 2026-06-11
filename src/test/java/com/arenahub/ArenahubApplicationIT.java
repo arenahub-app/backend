@@ -8,7 +8,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest
 @ActiveProfiles("test")
 @Testcontainers
-class ArenahubApplicationTests {
+class ArenahubApplicationIT {
 
     @Test
     void contextLoads() {
