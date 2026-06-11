@@ -1,0 +1,163 @@
+name: CD — develop
+
+on:
+  push:
+    branches:
+      - develop
+
+concurrency:
+  group: cd-develop
+  cancel-in-progress: false
+
+env:
+  MAVEN_OPTS: "-Xmx2g -XX:MaxMetaspaceSize=512m"
+  TESTCONTAINERS_RYUK_DISABLED: "true"
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build, test & coverage check
+        run: mvn verify -B --no-transfer-progress
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-develop-${{ github.run_id }}
+          path: target/site/jacoco/
+          retention-days: 14
+
+  release:
+    name: Version & PR → main
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Verify PAT_TOKEN is set
+        run: |
+          if [ -z "${{ secrets.PAT_TOKEN }}" ]; then
+            echo "::error::PAT_TOKEN não configurado. Adicione o secret em Settings → Secrets."
+            exit 1
+          fi
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Calculate next semantic version
+        id: semver
+        run: |
+          LAST_TAG=$(git tag -l "v[0-9]*" --sort=-v:refname | head -1)
+
+          if [ -z "$LAST_TAG" ]; then
+            NEW_VERSION="1.0.0"
+            BUMP="initial"
+          else
+            CURRENT="${LAST_TAG#v}"
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+
+            COMMITS=$(git log "${LAST_TAG}..HEAD" --format="%s %b" 2>/dev/null)
+
+            if echo "$COMMITS" | grep -qiE "(BREAKING.CHANGE|!:)"; then
+              BUMP="major"; MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0
+            elif echo "$COMMITS" | grep -qE "^feat(\(.+\))?:"; then
+              BUMP="minor"; MINOR=$((MINOR+1)); PATCH=0
+            else
+              BUMP="patch"; PATCH=$((PATCH+1))
+            fi
+
+            NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          fi
+
+          echo "version=${NEW_VERSION}"  >> "$GITHUB_OUTPUT"
+          echo "bump=${BUMP}"            >> "$GITHUB_OUTPUT"
+          echo "last_tag=${LAST_TAG:-nenhuma}" >> "$GITHUB_OUTPUT"
+          echo "Versão calculada: ${NEW_VERSION} (bump: ${BUMP})"
+
+      - name: Update pom.xml version
+        run: |
+          mvn versions:set -DnewVersion=${{ steps.semver.outputs.version }} \
+            -DgenerateBackupPoms=false -B --no-transfer-progress
+
+      - name: Configure git identity
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit version bump
+        run: |
+          git add pom.xml
+          if git diff --staged --quiet; then
+            echo "pom.xml já está na versão ${{ steps.semver.outputs.version }}."
+          else
+            git commit -m "chore(release): bump version to ${{ steps.semver.outputs.version }} [skip ci]"
+          fi
+
+      - name: Tag release
+        run: |
+          TAG="v${{ steps.semver.outputs.version }}"
+          if git tag -l | grep -qx "$TAG"; then
+            echo "Tag $TAG já existe, ignorando."
+          else
+            git tag -a "$TAG" -m "Release $TAG"
+          fi
+          git push origin develop --follow-tags
+
+      - name: Create or update PR → main
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          VERSION="v${{ steps.semver.outputs.version }}"
+          BUMP="${{ steps.semver.outputs.bump }}"
+          LAST_TAG="${{ steps.semver.outputs.last_tag }}"
+
+          COMMITS_MD=$(git log "origin/main..HEAD" --oneline 2>/dev/null \
+            | grep -v "chore(release):" \
+            | sed 's/^/- /' \
+            || echo "- (commits não disponíveis)")
+
+          BODY=$(printf '## Release %s\n\n**Tipo de bump:** `%s`  \n**Versão anterior:** `%s`\n\n### Commits incluídos\n%s\n\n---\n_Aguardando aprovação para merge em main._' \
+            "$VERSION" "$BUMP" "$LAST_TAG" "$COMMITS_MD")
+
+          EXISTING=$(gh pr list --base main --head develop --state open --json number --jq '.[0].number // empty')
+
+          if [ -z "$EXISTING" ]; then
+            gh pr create \
+              --base main \
+              --head develop \
+              --title "release: $VERSION" \
+              --body "$BODY"
+            echo "PR develop → main criada para $VERSION"
+          else
+            gh pr edit "$EXISTING" \
+              --title "release: $VERSION" \
+              --body "$BODY"
+            echo "PR #$EXISTING atualizada para $VERSION"
+          fi

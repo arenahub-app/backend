@@ -1,13 +1,14 @@
 package com.arenahub.presentation.auth;
 
+import com.arenahub.application.auth.port.out.EmailSenderPort;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.hamcrest.Matchers.*;
@@ -22,6 +23,9 @@ class AuthControllerIntegrationTest {
 
     @Autowired
     MockMvc mvc;
+
+    @MockBean
+    EmailSenderPort emailSenderPort;
 
     private static final String REGISTER_URL = "/api/v1/auth/register";
     private static final String LOGIN_URL = "/api/v1/auth/login";
@@ -121,5 +125,39 @@ class AuthControllerIntegrationTest {
     void logout_returns204() throws Exception {
         mvc.perform(post(LOGOUT_URL))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void forgotPassword_returns200_forAnyEmail() throws Exception {
+        mvc.perform(post("/api/v1/auth/password/forgot")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "email": "qualquer@example.com" }
+                                """))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void forgotPassword_returns400_forInvalidEmailFormat() throws Exception {
+        mvc.perform(post("/api/v1/auth/password/forgot")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "email": "nao-e-um-email" }
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void resetPassword_returns400_forUnknownToken() throws Exception {
+        mvc.perform(post("/api/v1/auth/password/reset")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "token": "00000000-0000-0000-0000-000000000000",
+                                  "newPassword": "NovaSenha@123"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
     }
 }
