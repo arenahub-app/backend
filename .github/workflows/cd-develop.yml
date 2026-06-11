@@ -12,6 +12,7 @@ concurrency:
 env:
   MAVEN_OPTS: "-Xmx2g -XX:MaxMetaspaceSize=512m"
   TESTCONTAINERS_RYUK_DISABLED: "true"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   validate:

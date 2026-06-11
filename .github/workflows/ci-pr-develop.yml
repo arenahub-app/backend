@@ -16,6 +16,7 @@ concurrency:
 env:
   MAVEN_OPTS: "-Xmx2g -XX:MaxMetaspaceSize=512m"
   TESTCONTAINERS_RYUK_DISABLED: "true"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   quality-gate:
@@ -42,10 +43,24 @@ jobs:
       - name: Build, test & coverage check
         run: mvn verify -B --no-transfer-progress
 
+      - name: Coverage comment on PR
+        if: always()
+        uses: madrapps/jacoco-report@v1.7.1
+        with:
+          paths: ${{ github.workspace }}/target/site/jacoco/jacoco.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          min-coverage-overall: 80
+          min-coverage-changed-files: 80
+          title: '## Coverage Report'
+          update-comment: true
+
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: jacoco-pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
-          path: target/site/jacoco/
+          path: |
+            target/surefire-reports/
+            target/failsafe-reports/
+            target/site/jacoco/
           retention-days: 14

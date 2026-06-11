@@ -13,7 +13,7 @@
 
   <groupId>com.arenahub</groupId>
   <artifactId>arenahub-backend</artifactId>
-  <version>1.0.0</version>
+  <version>1.0.1</version>
   <name>arenahub-backend</name>
   <description>ArenaHub — Backend Spring Boot 3 + Java 21</description>
 
@@ -25,6 +25,9 @@
     <springdoc.version>2.3.0</springdoc.version>
     <testcontainers.version>1.20.1</testcontainers.version>
     <awssdk.version>2.25.70</awssdk.version>
+
+    <!-- OWASP Dependency Check — desabilitado por padrão, ativado pelo workflow semanal -->
+    <dependency-check.skip>true</dependency-check.skip>
 
     <!-- SonarCloud -->
     <sonar.projectKey>arenahub-app_backend</sonar.projectKey>
@@ -234,7 +237,30 @@
             <include>**/*Test.java</include>
             <include>**/*Tests.java</include>
           </includes>
+          <excludes>
+            <exclude>**/*IT.java</exclude>
+            <exclude>**/IT*.java</exclude>
+          </excludes>
         </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <configuration>
+          <environmentVariables>
+            <TESTCONTAINERS_DOCKER_CLIENT_STRATEGY>org.testcontainers.dockerclient.UnixSocketClientProviderStrategy</TESTCONTAINERS_DOCKER_CLIENT_STRATEGY>
+            <TESTCONTAINERS_RYUK_DISABLED>true</TESTCONTAINERS_RYUK_DISABLED>
+          </environmentVariables>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
 
       <plugin>
@@ -243,16 +269,44 @@
         <version>0.8.12</version>
         <executions>
           <execution>
+            <id>prepare-agent</id>
             <goals>
               <goal>prepare-agent</goal>
             </goals>
           </execution>
           <execution>
+            <id>prepare-agent-integration</id>
+            <goals>
+              <goal>prepare-agent-integration</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>merge-results</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>merge</goal>
+            </goals>
+            <configuration>
+              <fileSets>
+                <fileSet>
+                  <directory>${project.build.directory}</directory>
+                  <includes>
+                    <include>jacoco*.exec</include>
+                  </includes>
+                </fileSet>
+              </fileSets>
+              <destFile>${project.build.directory}/jacoco-merged.exec</destFile>
+            </configuration>
+          </execution>
+          <execution>
             <id>report</id>
-            <phase>test</phase>
+            <phase>verify</phase>
             <goals>
               <goal>report</goal>
             </goals>
+            <configuration>
+              <dataFile>${project.build.directory}/jacoco-merged.exec</dataFile>
+            </configuration>
           </execution>
           <execution>
             <id>check</id>
@@ -261,30 +315,22 @@
               <goal>check</goal>
             </goals>
             <configuration>
+              <dataFile>${project.build.directory}/jacoco-merged.exec</dataFile>
               <excludes>
-                <!-- Application entry point -->
                 <exclude>com/arenahub/ArenahubApplication.class</exclude>
-                <!-- DTOs, exceptions, VOs, config properties -->
                 <exclude>com/arenahub/**/dto/**/*.class</exclude>
                 <exclude>com/arenahub/**/exception/**/*.class</exclude>
                 <exclude>com/arenahub/**/*Properties.class</exclude>
                 <exclude>com/arenahub/**/vo/**/*.class</exclude>
                 <exclude>com/arenahub/**/config/**/*.class</exclude>
-                <!-- Port interfaces — pure contracts, no implementation -->
                 <exclude>com/arenahub/**/port/**/*.class</exclude>
-                <!-- Domain repository interfaces -->
                 <exclude>com/arenahub/domain/**/*Repository.class</exclude>
-                <!-- Spring Data JPA interfaces — framework implements -->
                 <exclude>com/arenahub/**/persistence/**/*JpaRepository.class</exclude>
-                <!-- JPA entity mapping — tested indirectly via integration -->
                 <exclude>com/arenahub/**/persistence/**/*JpaEntity.class</exclude>
-                <!-- Simple enum with no business logic -->
                 <exclude>com/arenahub/**/*Status.class</exclude>
-                <!-- Spring Security infrastructure -->
                 <exclude>com/arenahub/**/security/SecurityConfig.class</exclude>
                 <exclude>com/arenahub/**/security/UserDetailsServiceImpl.class</exclude>
                 <exclude>com/arenahub/**/security/OAuth2SuccessHandler.class</exclude>
-                <!-- Email adapter — external service, tested via integration -->
                 <exclude>com/arenahub/**/email/**/*.class</exclude>
               </excludes>
               <rules>
@@ -302,6 +348,42 @@
             </configuration>
           </execution>
         </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <version>3.4.0</version>
+        <configuration>
+          <configLocation>checkstyle.xml</configLocation>
+          <consoleOutput>true</consoleOutput>
+          <failsOnError>true</failsOnError>
+          <includeTestSourceDirectory>false</includeTestSourceDirectory>
+        </configuration>
+        <executions>
+          <execution>
+            <id>checkstyle</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.owasp</groupId>
+        <artifactId>dependency-check-maven</artifactId>
+        <version>10.0.4</version>
+        <configuration>
+          <skip>${dependency-check.skip}</skip>
+          <failBuildOnCVSS>7</failBuildOnCVSS>
+          <failOnError>false</failOnError>
+          <formats>
+            <format>HTML</format>
+            <format>JSON</format>
+          </formats>
+        </configuration>
       </plugin>
 
       <plugin>
