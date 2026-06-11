@@ -34,13 +34,6 @@ jobs:
       - name: Build, test & coverage check
         run: mvn verify -B --no-transfer-progress
 
-      - name: SonarCloud analysis
-        if: ${{ env.SONAR_TOKEN != '' }}
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn sonar:sonar -B --no-transfer-progress
-
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
