@@ -3,6 +3,11 @@ logging:
     com.arenahub: INFO
     org.flywaydb: INFO
 
+management:
+  health:
+    mail:
+      enabled: false
+
 arenahub:
   jwt:
     access-token-expiration-minutes: 60
