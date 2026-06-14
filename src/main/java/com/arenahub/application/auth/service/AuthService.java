@@ -79,16 +79,7 @@ public class AuthService implements RegisterUserUseCase, LoginUseCase,
                 + "/verify-email?token=" + verificationToken;
         String userEmail = saved.getEmail().value();
 
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                try {
-                    emailSender.sendEmailVerification(userEmail, verificationUrl);
-                } catch (Exception ex) {
-                    log.error("Falha ao enviar email de verificação para {}", userEmail, ex);
-                }
-            }
-        });
+        runAfterCommit(() -> emailSender.sendEmailVerification(userEmail, verificationUrl));
 
         return issueTokens(saved);
     }
@@ -166,6 +157,23 @@ public class AuthService implements RegisterUserUseCase, LoginUseCase,
         RefreshToken rt = RefreshToken.issue(user.getId(), tokenHash, refreshTtl);
         refreshTokenRepository.save(rt);
         return new AuthTokens(accessToken, rawRefreshToken, jwtService.accessTokenExpirationSeconds());
+    }
+
+    private void runAfterCommit(Runnable task) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    try {
+                        task.run();
+                    } catch (Exception ex) {
+                        log.error("Falha ao enviar email", ex);
+                    }
+                }
+            });
+        } else {
+            task.run();
+        }
     }
 
     static String hashToken(String rawToken) {

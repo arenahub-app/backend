@@ -55,16 +55,7 @@ public class PasswordService implements ForgotPasswordUseCase, ResetPasswordUseC
             String resetUrl = frontendProperties.baseUrl() + "/reset-password?token=" + rawToken;
             String userEmail = user.getEmail().value();
 
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    try {
-                        emailSender.sendPasswordReset(userEmail, resetUrl);
-                    } catch (Exception ex) {
-                        log.error("Falha ao enviar email de reset de senha para {}", userEmail, ex);
-                    }
-                }
-            });
+            runAfterCommit(() -> emailSender.sendPasswordReset(userEmail, resetUrl));
         });
     }
 
@@ -92,15 +83,23 @@ public class PasswordService implements ForgotPasswordUseCase, ResetPasswordUseC
         String userEmail = user.getEmail().value();
         Instant changedAt = Instant.now();
 
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                try {
-                    emailSender.sendPasswordChanged(userEmail, changedAt);
-                } catch (Exception ex) {
-                    log.error("Falha ao enviar email de senha alterada para {}", userEmail, ex);
+        runAfterCommit(() -> emailSender.sendPasswordChanged(userEmail, changedAt));
+    }
+
+    private void runAfterCommit(Runnable task) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    try {
+                        task.run();
+                    } catch (Exception ex) {
+                        log.error("Falha ao enviar email", ex);
+                    }
                 }
-            }
-        });
+            });
+        } else {
+            task.run();
+        }
     }
 }
