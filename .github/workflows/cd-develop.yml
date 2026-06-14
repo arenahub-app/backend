@@ -13,6 +13,7 @@ env:
   MAVEN_OPTS: "-Xmx2g -XX:MaxMetaspaceSize=512m"
   TESTCONTAINERS_RYUK_DISABLED: "true"
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  IMAGE: ghcr.io/arenahub-app/backend
 
 jobs:
   validate:
@@ -144,8 +145,14 @@ jobs:
             | sed 's/^/- /' \
             || echo "- (commits não disponíveis)")
 
-          BODY=$(printf '## Release %s\n\n**Tipo de bump:** `%s`  \n**Versão anterior:** `%s`\n\n### Commits incluídos\n%s\n\n---\n_Aguardando aprovação para merge em main._' \
-            "$VERSION" "$BUMP" "$LAST_TAG" "$COMMITS_MD")
+          STAGING_URL="${{ vars.RAILWAY_STAGING_URL }}"
+          STAGING_LINE=""
+          if [ -n "$STAGING_URL" ]; then
+            STAGING_LINE="\n**Staging:** ${STAGING_URL}"
+          fi
+
+          BODY=$(printf '## Release %s\n\n**Tipo de bump:** `%s`  \n**Versão anterior:** `%s`%s\n\n### Commits incluídos\n%s\n\n---\n_Aguardando aprovação para merge em main._' \
+            "$VERSION" "$BUMP" "$LAST_TAG" "$STAGING_LINE" "$COMMITS_MD")
 
           EXISTING=$(gh pr list --base main --head develop --state open --json number --jq '.[0].number // empty')
 
@@ -162,3 +169,58 @@ jobs:
               --body "$BODY"
             echo "PR #$EXISTING atualizada para $VERSION"
           fi
+
+  build-and-push:
+    name: Build Docker → GHCR
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+
+      - name: Extract version from pom.xml
+        id: version
+        run: |
+          VERSION=$(grep -m1 '<version>' pom.xml | tr -d ' ' | sed 's/<version>\(.*\)<\/version>/\1/')
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Versão: ${VERSION}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:staging
+            ${{ env.IMAGE }}:v${{ steps.version.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-staging:
+    name: Deploy → Railway Staging
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Trigger Railway deploy
+        run: |
+          curl -s -X POST "${{ secrets.RAILWAY_DEPLOY_HOOK_STAGING }}" \
+            --fail-with-body
+          echo "Deploy staging disparado com sucesso."

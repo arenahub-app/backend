@@ -1,0 +1,92 @@
+name: CD — main
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: cd-main
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  IMAGE: ghcr.io/arenahub-app/backend
+
+jobs:
+  build-and-push:
+    name: Build Docker → GHCR
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from pom.xml
+        id: version
+        run: |
+          VERSION=$(grep -m1 '<version>' pom.xml | tr -d ' ' | sed 's/<version>\(.*\)<\/version>/\1/')
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Versão: ${VERSION}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:v${{ steps.version.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-prod:
+    name: Deploy → Railway Production
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Trigger Railway deploy
+        run: |
+          curl -s -X POST "${{ secrets.RAILWAY_DEPLOY_HOOK_PROD }}" \
+            --fail-with-body
+          echo "Deploy produção disparado com sucesso."
+
+  create-release:
+    name: GitHub Release
+    needs: [build-and-push, deploy-prod]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="v${{ needs.build-and-push.outputs.version }}"
+          gh release create "$VERSION" \
+            --title "Release $VERSION" \
+            --generate-notes \
+            --latest

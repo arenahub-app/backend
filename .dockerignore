@@ -1,0 +1,5 @@
+target/
+.github/
+.mvn/
+*.md
+sonar-project.properties
