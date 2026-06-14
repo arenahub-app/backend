@@ -32,7 +32,7 @@ spring:
     out-of-order: false
 
   mail:
-    host: ${MAIL_HOST}
+    host: ${MAIL_HOST:}
     port: ${MAIL_PORT:587}
     username: ${MAIL_USERNAME:}
     password: ${MAIL_PASSWORD:}
@@ -48,8 +48,8 @@ spring:
       client:
         registration:
           google:
-            client-id: ${GOOGLE_CLIENT_ID}
-            client-secret: ${GOOGLE_CLIENT_SECRET}
+            client-id: ${GOOGLE_CLIENT_ID:placeholder}
+            client-secret: ${GOOGLE_CLIENT_SECRET:placeholder}
             scope: openid,email,profile
             redirect-uri: "{baseUrl}/api/v1/auth/oauth2/callback/google"
 
