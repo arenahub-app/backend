@@ -59,14 +59,19 @@ jobs:
     name: Deploy → Railway Production
     needs: build-and-push
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
-      - name: Trigger Railway deploy
-        run: |
-          curl -s -X POST "${{ secrets.RAILWAY_DEPLOY_HOOK_PROD }}" \
-            --fail-with-body
-          echo "Deploy produção disparado com sucesso."
+      - uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy to Railway Production
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_PROJECT_ID: e66efdce-fdf7-4dfd-aeec-e89e73999fba
+        run: railway up --service backend-prod --detach
 
   create-release:
     name: GitHub Release
