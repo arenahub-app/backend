@@ -31,18 +31,6 @@ spring:
     validate-on-migrate: true
     out-of-order: false
 
-  mail:
-    host: ${MAIL_HOST:}
-    port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASSWORD:}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-
   security:
     oauth2:
       client:
@@ -86,6 +74,7 @@ arenahub:
 
   mail:
     from: ${MAIL_FROM:noreply@arenahub.app}
+    api-key: ${RESEND_API_KEY:${MAIL_PASSWORD:}}
 
   jwt:
     secret: ${JWT_SECRET}
