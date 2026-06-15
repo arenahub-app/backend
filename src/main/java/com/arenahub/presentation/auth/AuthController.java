@@ -95,7 +95,7 @@ public class AuthController {
                 .secure(true)
                 .path("/api/v1/auth/refresh")
                 .maxAge(Duration.ofDays(jwtProperties.refreshTokenExpirationDays()))
-                .sameSite("Strict")
+                .sameSite("None")
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
@@ -106,7 +106,7 @@ public class AuthController {
                 .secure(true)
                 .path("/api/v1/auth/refresh")
                 .maxAge(Duration.ZERO)
-                .sameSite("Strict")
+                .sameSite("None")
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
