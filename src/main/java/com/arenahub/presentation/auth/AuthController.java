@@ -93,7 +93,7 @@ public class AuthController {
         ResponseCookie cookie = ResponseCookie.from("refresh_token", rawToken)
                 .httpOnly(true)
                 .secure(true)
-                .path("/api/v1/auth/refresh")
+                .path("/")
                 .maxAge(Duration.ofDays(jwtProperties.refreshTokenExpirationDays()))
                 .sameSite("None")
                 .build();
@@ -104,7 +104,7 @@ public class AuthController {
         ResponseCookie cookie = ResponseCookie.from("refresh_token", "")
                 .httpOnly(true)
                 .secure(true)
-                .path("/api/v1/auth/refresh")
+                .path("/")
                 .maxAge(Duration.ZERO)
                 .sameSite("None")
                 .build();
