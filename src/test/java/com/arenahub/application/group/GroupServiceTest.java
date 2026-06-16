@@ -4,6 +4,7 @@ import com.arenahub.application.exception.*;
 import com.arenahub.application.group.port.in.*;
 import com.arenahub.domain.group.*;
 import com.arenahub.domain.group.vo.*;
+import com.arenahub.domain.user.UserRepository;
 import com.arenahub.presentation.group.dto.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,11 +26,14 @@ class GroupServiceTest {
     @Mock
     GroupRepository groupRepository;
 
+    @Mock
+    UserRepository userRepository;
+
     private GroupService groupService;
 
     @BeforeEach
     void setUp() {
-        groupService = new GroupService(groupRepository);
+        groupService = new GroupService(groupRepository, userRepository);
     }
 
     @Test
