@@ -7,14 +7,18 @@ import com.arenahub.application.exception.InvalidPurposeTokenException;
 import com.arenahub.domain.user.*;
 import com.arenahub.domain.user.vo.Email;
 import com.arenahub.infrastructure.config.FrontendProperties;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @Transactional
 public class PasswordService implements ForgotPasswordUseCase, ResetPasswordUseCase {
@@ -49,7 +53,9 @@ public class PasswordService implements ForgotPasswordUseCase, ResetPasswordUseC
             tokenRepository.save(prt);
 
             String resetUrl = frontendProperties.baseUrl() + "/reset-password?token=" + rawToken;
-            emailSender.sendPasswordReset(user.getEmail().value(), resetUrl);
+            String userEmail = user.getEmail().value();
+
+            runAfterCommit(() -> emailSender.sendPasswordReset(userEmail, resetUrl));
         });
     }
 
@@ -74,6 +80,26 @@ public class PasswordService implements ForgotPasswordUseCase, ResetPasswordUseC
 
         refreshTokenRepository.revokeAllByUserId(user.getId());
 
-        emailSender.sendPasswordChanged(user.getEmail().value(), Instant.now());
+        String userEmail = user.getEmail().value();
+        Instant changedAt = Instant.now();
+
+        runAfterCommit(() -> emailSender.sendPasswordChanged(userEmail, changedAt));
+    }
+
+    private void runAfterCommit(Runnable task) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    try {
+                        task.run();
+                    } catch (Exception ex) {
+                        log.error("Falha ao enviar email", ex);
+                    }
+                }
+            });
+        } else {
+            task.run();
+        }
     }
 }

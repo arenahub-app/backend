@@ -12,9 +12,12 @@ import com.arenahub.infrastructure.config.FrontendProperties;
 import com.arenahub.infrastructure.config.JwtProperties;
 import com.arenahub.infrastructure.security.JwtService;
 import io.jsonwebtoken.Claims;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -23,6 +26,7 @@ import java.time.Duration;
 import java.util.HexFormat;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @Transactional
 public class AuthService implements RegisterUserUseCase, LoginUseCase,
@@ -73,7 +77,9 @@ public class AuthService implements RegisterUserUseCase, LoginUseCase,
                 saved.getId(), "email-verification", Duration.ofHours(24));
         String verificationUrl = frontendProperties.baseUrl()
                 + "/verify-email?token=" + verificationToken;
-        emailSender.sendEmailVerification(saved.getEmail().value(), verificationUrl);
+        String userEmail = saved.getEmail().value();
+
+        runAfterCommit(() -> emailSender.sendEmailVerification(userEmail, verificationUrl));
 
         return issueTokens(saved);
     }
@@ -151,6 +157,23 @@ public class AuthService implements RegisterUserUseCase, LoginUseCase,
         RefreshToken rt = RefreshToken.issue(user.getId(), tokenHash, refreshTtl);
         refreshTokenRepository.save(rt);
         return new AuthTokens(accessToken, rawRefreshToken, jwtService.accessTokenExpirationSeconds());
+    }
+
+    private void runAfterCommit(Runnable task) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    try {
+                        task.run();
+                    } catch (Exception ex) {
+                        log.error("Falha ao enviar email", ex);
+                    }
+                }
+            });
+        } else {
+            task.run();
+        }
     }
 
     static String hashToken(String rawToken) {

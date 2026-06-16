@@ -1,0 +1,9 @@
+logging:
+  level:
+    com.arenahub: INFO
+    org.flywaydb: INFO
+
+arenahub:
+  jwt:
+    access-token-expiration-minutes: 60
+    refresh-token-expiration-days: 30
