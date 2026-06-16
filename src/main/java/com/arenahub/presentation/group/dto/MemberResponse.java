@@ -12,6 +12,7 @@ public record MemberResponse(
         UUID id,
         UUID userId,
         UUID groupId,
+        String userName,
         GroupRole role,
         BigDecimal skill,
         SkillSource skillSource,

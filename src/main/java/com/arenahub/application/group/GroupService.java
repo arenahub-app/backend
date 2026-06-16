@@ -4,6 +4,7 @@ import com.arenahub.application.exception.*;
 import com.arenahub.application.group.port.in.*;
 import com.arenahub.domain.group.*;
 import com.arenahub.domain.group.vo.*;
+import com.arenahub.domain.user.UserRepository;
 import com.arenahub.presentation.group.dto.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,9 +22,11 @@ public class GroupService implements
         GetInvitePreviewUseCase, JoinByInviteUseCase {
 
     private final GroupRepository groupRepository;
+    private final UserRepository userRepository;
 
-    public GroupService(GroupRepository groupRepository) {
+    public GroupService(GroupRepository groupRepository, UserRepository userRepository) {
         this.groupRepository = groupRepository;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -246,9 +249,12 @@ public class GroupService implements
     }
 
     private MemberResponse toMemberResponse(GroupMember member) {
+        String userName = userRepository.findById(member.getUserId())
+                .map(u -> u.getName().value())
+                .orElse(null);
         return new MemberResponse(
                 member.getId(), member.getUserId(), member.getGroupId(),
-                member.getRole(), member.getSkill().value(), member.getSkillSource(),
+                userName, member.getRole(), member.getSkill().value(), member.getSkillSource(),
                 member.getPosition(), member.isSubscriber(), member.getJoinedAt());
     }
 
