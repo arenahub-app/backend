@@ -2,7 +2,6 @@ package com.arenahub.presentation.match.dto;
 
 import com.arenahub.domain.match.vo.MatchStatus;
 import com.arenahub.domain.match.vo.PresenceListStatus;
-import com.arenahub.domain.match.vo.PresenceStatus;
 
 import java.time.Instant;
 import java.util.UUID;

@@ -11,7 +11,6 @@ import com.arenahub.domain.match.Match;
 import com.arenahub.domain.match.PresenceEntry;
 import com.arenahub.domain.match.WaitingEntry;
 import com.arenahub.domain.match.vo.Location;
-import com.arenahub.domain.match.vo.PresenceListStatus;
 import com.arenahub.domain.match.vo.PresenceStatus;
 import com.arenahub.infrastructure.persistence.group.GroupJpaRepository;
 import com.arenahub.presentation.group.dto.MemberResponse;
