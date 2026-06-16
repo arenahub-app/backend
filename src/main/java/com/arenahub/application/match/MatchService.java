@@ -60,7 +60,7 @@ public class MatchService implements
         try {
             match = Match.create(cmd.groupId(), cmd.scheduledAt(),
                     new Location(cmd.locationName(), cmd.locationAddress()),
-                    cmd.maxPlayers(), actor.id());
+                    cmd.maxPlayers(), actor.userId());
         } catch (IllegalArgumentException ex) {
             throw new MatchInPastException();
         }
@@ -279,7 +279,7 @@ public class MatchService implements
                 .orElseThrow(MemberNotFoundException::new);
         if (target.presenceBanned()) throw new MemberAlreadyBannedException();
 
-        groupMemberPort.banFromPresence(cmd.memberId(), cmd.reason(), actor.id(), cmd.groupId());
+        groupMemberPort.banFromPresence(cmd.memberId(), cmd.reason(), actor.userId(), cmd.groupId());
 
         GroupMemberView updated = groupMemberPort.findMemberById(cmd.memberId()).orElseThrow();
         return toMemberResponse(updated);
@@ -296,7 +296,7 @@ public class MatchService implements
                 .orElseThrow(MemberNotFoundException::new);
         if (!target.presenceBanned()) throw new MemberNotBannedException();
 
-        groupMemberPort.unbanFromPresence(cmd.memberId(), cmd.groupId(), actor.id());
+        groupMemberPort.unbanFromPresence(cmd.memberId(), cmd.groupId(), actor.userId());
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────

@@ -129,7 +129,7 @@ class MatchControllerIT {
     }
 
     @Test
-    void fullPresenceFlow_confirmAndCancelWithQueuePromotion() throws Exception {
+    void fullPresenceFlow_confirmAndCancel() throws Exception {
         MvcResult createResult = mvc.perform(post("/api/v1/groups/{groupId}/matches", groupId)
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -137,7 +137,7 @@ class MatchControllerIT {
                                 {
                                   "scheduledAt": "%s",
                                   "locationName": "Quadra",
-                                  "maxPlayers": 1
+                                  "maxPlayers": 10
                                 }
                                 """.formatted(futureDate())))
                 .andExpect(status().isCreated())
