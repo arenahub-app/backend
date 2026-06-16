@@ -102,13 +102,13 @@ class GroupControllerIT {
     }
 
     @Test
-    void createGroup_returns401_withoutToken() throws Exception {
+    void createGroup_redirectsToLogin_withoutToken() throws Exception {
         mvc.perform(post("/api/v1/groups")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name": "Arena FC", "sport": "FOOTBALL"}
                                 """))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().is3xxRedirection());
     }
 
     @Test
