@@ -52,6 +52,9 @@ public class SecurityConfig {
                                 "/docs/**",
                                 "/swagger-ui/**"
                         ).permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET,
+                                "/api/v1/invites/*"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2
