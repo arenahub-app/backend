@@ -79,7 +79,7 @@ public class TeamFormationService implements
                 .ifPresent(existing -> formationRepo.deleteById(existing.getId()));
 
         TeamFormation formation = TeamFormation.create(cmd.matchId(), cmd.groupId(),
-                cmd.numberOfTeams(), actor.id(), List.of());
+                cmd.numberOfTeams(), actor.userId(), List.of());
 
         List<Team> teams = snakeDraftService.distribute(players, cmd.numberOfTeams(),
                 cmd.groupId(), formation.getId());
