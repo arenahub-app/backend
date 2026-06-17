@@ -74,9 +74,9 @@ class TeamFormationControllerIT {
                         .header("Authorization", "Bearer " + ownerToken))
                 .andExpect(status().isCreated())
                 .andReturn();
-        String inviteCode = objectMapper.readTree(inviteResult.getResponse().getContentAsString()).get("code").asText();
+        String inviteToken = objectMapper.readTree(inviteResult.getResponse().getContentAsString()).get("token").asText();
 
-        mvc.perform(post("/api/v1/groups/invites/{code}/join", inviteCode)
+        mvc.perform(post("/api/v1/invites/{token}/join", inviteToken)
                         .header("Authorization", "Bearer " + player2Token))
                 .andExpect(status().isOk());
 
