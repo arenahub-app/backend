@@ -5,7 +5,7 @@ CREATE TABLE charges (
     type                VARCHAR(15)              NOT NULL,
     amount              NUMERIC(10, 2)           NOT NULL,
     reference_match_id  UUID,
-    reference_month     CHAR(7),
+    reference_month     VARCHAR(7),
     status              VARCHAR(15)              NOT NULL DEFAULT 'PENDING',
     created_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),

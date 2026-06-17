@@ -39,7 +39,7 @@ public class ChargeJpaEntity {
     @Column(name = "reference_match_id", columnDefinition = "uuid")
     private UUID referenceMatchId;
 
-    @Column(name = "reference_month", columnDefinition = "CHAR(7)")
+    @Column(name = "reference_month", length = 7)
     private String referenceMonth;
 
     @Enumerated(EnumType.STRING)

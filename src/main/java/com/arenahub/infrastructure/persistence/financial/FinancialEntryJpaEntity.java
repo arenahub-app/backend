@@ -44,7 +44,7 @@ public class FinancialEntryJpaEntity {
     @Column(name = "match_id", columnDefinition = "uuid")
     private UUID matchId;
 
-    @Column(name = "reference_month", columnDefinition = "CHAR(7)")
+    @Column(name = "reference_month", length = 7)
     private String referenceMonth;
 
     @Column(name = "source_charge_id", columnDefinition = "uuid")
