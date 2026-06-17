@@ -2,6 +2,7 @@ package com.arenahub.application.match;
 
 import com.arenahub.application.exception.*;
 import com.arenahub.application.match.port.in.*;
+import com.arenahub.application.match.port.out.ChargePort;
 import com.arenahub.application.match.port.out.GroupMemberPort;
 import com.arenahub.application.match.port.out.GroupMemberPort.GroupMemberView;
 import com.arenahub.application.match.port.out.MatchRepository;
@@ -34,12 +35,14 @@ public class MatchService implements
     private final MatchRepository matchRepository;
     private final GroupMemberPort groupMemberPort;
     private final GroupJpaRepository groupRepo;
+    private final ChargePort chargePort;
 
     public MatchService(MatchRepository matchRepository, GroupMemberPort groupMemberPort,
-                        GroupJpaRepository groupRepo) {
+                        GroupJpaRepository groupRepo, ChargePort chargePort) {
         this.matchRepository = matchRepository;
         this.groupMemberPort = groupMemberPort;
         this.groupRepo = groupRepo;
+        this.chargePort = chargePort;
     }
 
     // ── Create Match ──────────────────────────────────────────────────────────
@@ -198,13 +201,25 @@ public class MatchService implements
         if (confirmed < match.getMaxPlayers()) {
             PresenceEntry entry = matchRepository.savePresenceEntry(
                     PresenceEntry.confirm(match.getId(), cmd.groupId(), member.id()));
-            return PresenceActionResponse.presence(toPresenceEntryResponse(entry));
+            PendingChargeResponse pendingCharge = createChargeIfNeeded(
+                    cmd.groupId(), member.id(), match.getId());
+            return PresenceActionResponse.presence(toPresenceEntryResponse(entry), pendingCharge);
         } else {
             long nextPos = matchRepository.countWaitingByMatchId(match.getId()) + 1;
             WaitingEntry entry = matchRepository.saveWaitingEntry(
                     WaitingEntry.create(match.getId(), cmd.groupId(), member.id(), (int) nextPos));
             return PresenceActionResponse.waiting(toWaitingEntryResponse(entry));
         }
+    }
+
+    private PendingChargeResponse createChargeIfNeeded(UUID groupId, UUID memberId, UUID matchId) {
+        var group = groupRepo.findByIdAndDeletedAtIsNull(groupId).orElse(null);
+        if (group == null || group.getMatchFee() == null) return null;
+
+        if (chargePort.existsPendingOrApproved(matchId, memberId)) return null;
+
+        var view = chargePort.createDaily(groupId, memberId, group.getMatchFee(), matchId);
+        return new PendingChargeResponse(view.chargeId(), view.amount(), view.pixKey(), view.status());
     }
 
     // ── Cancel Own Presence ───────────────────────────────────────────────────

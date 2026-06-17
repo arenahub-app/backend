@@ -2,6 +2,7 @@ package com.arenahub.application.match;
 
 import com.arenahub.application.exception.*;
 import com.arenahub.application.match.port.in.*;
+import com.arenahub.application.match.port.out.ChargePort;
 import com.arenahub.application.match.port.out.GroupMemberPort;
 import com.arenahub.application.match.port.out.GroupMemberPort.GroupMemberView;
 import com.arenahub.application.match.port.out.MatchRepository;
@@ -46,6 +47,9 @@ class MatchServiceTest {
     @Mock
     GroupJpaRepository groupRepo;
 
+    @Mock
+    ChargePort chargePort;
+
     private MatchService matchService;
 
     private final UUID groupId = UUID.randomUUID();
@@ -54,7 +58,7 @@ class MatchServiceTest {
 
     @BeforeEach
     void setUp() {
-        matchService = new MatchService(matchRepository, groupMemberPort, groupRepo);
+        matchService = new MatchService(matchRepository, groupMemberPort, groupRepo, chargePort);
     }
 
     private GroupMemberView adminView() {

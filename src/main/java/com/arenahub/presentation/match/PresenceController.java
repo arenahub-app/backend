@@ -57,7 +57,7 @@ public class PresenceController {
         } else {
             cancelPresenceUseCase.execute(
                     new CancelPresenceUseCase.Command(groupId, matchId, currentUserId(auth)));
-            return ResponseEntity.ok(new PresenceActionResponse("DECLINED", null, null));
+            return ResponseEntity.ok(new PresenceActionResponse("DECLINED", null, null, null));
         }
     }
 

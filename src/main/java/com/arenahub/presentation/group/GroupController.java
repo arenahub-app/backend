@@ -77,7 +77,7 @@ public class GroupController {
                                                  Authentication auth) {
         return ResponseEntity.ok(updateGroupUseCase.execute(
                 new UpdateGroupUseCase.Command(id, currentUserId(auth),
-                        req.name(), req.sport(), req.description(), req.pixKey())));
+                        req.name(), req.sport(), req.description(), req.pixKey(), req.matchFee())));
     }
 
     @DeleteMapping("/{id}")
