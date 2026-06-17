@@ -159,8 +159,8 @@ public class MatchService implements
         requireMember(cmd.groupId(), cmd.actorUserId());
         Match match = requireMatch(cmd.groupId(), cmd.matchId());
 
-        List<PresenceEntry> confirmed = matchRepository.findPresenceEntriesByMatchIdAndStatus(
-                match.getId(), PresenceStatus.CONFIRMED);
+        List<PresenceEntry> confirmed = matchRepository.findPresenceEntriesByMatchIdAndStatuses(
+                match.getId(), List.of(PresenceStatus.CONFIRMED, PresenceStatus.PAYMENT_PENDING));
         List<PresenceEntry> declined = matchRepository.findPresenceEntriesByMatchIdAndStatus(
                 match.getId(), PresenceStatus.DECLINED);
         List<WaitingEntry> waiting = matchRepository.findWaitingEntriesByMatchId(match.getId());
@@ -183,12 +183,10 @@ public class MatchService implements
         if (!match.isListOpen()) throw new ListClosedException();
 
         Optional<PresenceEntry> existing = matchRepository.findPresenceEntry(match.getId(), member.id());
-        if (existing.isPresent() && existing.get().getStatus() == PresenceStatus.CONFIRMED) {
+        if (existing.isPresent() && existing.get().getStatus() != PresenceStatus.DECLINED) {
             throw new AlreadyConfirmedException();
         }
-        if (existing.isPresent() && existing.get().getStatus() == PresenceStatus.BANNED_PENDING) {
-            throw new AlreadyConfirmedException();
-        }
+        existing.ifPresent(e -> matchRepository.deletePresenceEntry(e.getId()));
 
         if (member.presenceBanned()) {
             PresenceEntry entry = matchRepository.savePresenceEntry(
@@ -197,12 +195,15 @@ public class MatchService implements
             return PresenceActionResponse.presence(toPresenceEntryResponse(entry));
         }
 
-        long confirmed = matchRepository.countConfirmedByMatchId(match.getId());
-        if (confirmed < match.getMaxPlayers()) {
-            PresenceEntry entry = matchRepository.savePresenceEntry(
-                    PresenceEntry.confirm(match.getId(), cmd.groupId(), member.id()));
+        long occupied = matchRepository.countOccupiedByMatchId(match.getId());
+        if (occupied < match.getMaxPlayers()) {
             PendingChargeResponse pendingCharge = createChargeIfNeeded(
                     cmd.groupId(), member.id(), match.getId());
+            PresenceEntry entry = pendingCharge != null
+                    ? matchRepository.savePresenceEntry(
+                            PresenceEntry.awaitingPayment(match.getId(), cmd.groupId(), member.id()))
+                    : matchRepository.savePresenceEntry(
+                            PresenceEntry.confirm(match.getId(), cmd.groupId(), member.id()));
             return PresenceActionResponse.presence(toPresenceEntryResponse(entry), pendingCharge);
         } else {
             long nextPos = matchRepository.countWaitingByMatchId(match.getId()) + 1;
@@ -231,7 +232,9 @@ public class MatchService implements
         if (!match.isListOpen()) throw new ListClosedException();
 
         Optional<PresenceEntry> presenceOpt = matchRepository.findPresenceEntry(match.getId(), member.id());
-        boolean wasConfirmed = presenceOpt.map(e -> e.getStatus() == PresenceStatus.CONFIRMED).orElse(false);
+        boolean wasConfirmed = presenceOpt.map(e ->
+                e.getStatus() == PresenceStatus.CONFIRMED
+                || e.getStatus() == PresenceStatus.PAYMENT_PENDING).orElse(false);
 
         presenceOpt.ifPresent(e -> matchRepository.deletePresenceEntry(e.getId()));
         matchRepository.findWaitingEntry(match.getId(), member.id())
@@ -274,7 +277,8 @@ public class MatchService implements
 
         PresenceEntry entry = matchRepository.findPresenceEntry(match.getId(), cmd.memberId())
                 .orElseThrow(MemberNotFoundException::new);
-        boolean wasConfirmed = entry.getStatus() == PresenceStatus.CONFIRMED;
+        boolean wasConfirmed = entry.getStatus() == PresenceStatus.CONFIRMED
+                || entry.getStatus() == PresenceStatus.PAYMENT_PENDING;
         matchRepository.deletePresenceEntry(entry.getId());
 
         if (wasConfirmed) {
@@ -346,7 +350,7 @@ public class MatchService implements
     }
 
     private MatchResponse toMatchResponse(Match match, String myPresenceStatus) {
-        long confirmed = matchRepository.countConfirmedByMatchId(match.getId());
+        long confirmed = matchRepository.countOccupiedByMatchId(match.getId());
         long waiting = matchRepository.countWaitingByMatchId(match.getId());
         return new MatchResponse(
                 match.getId(), match.getGroupId(), match.getScheduledAt(), match.getListClosesAt(),
@@ -356,7 +360,7 @@ public class MatchService implements
     }
 
     private MatchSummaryResponse toSummaryResponse(Match match) {
-        long confirmed = matchRepository.countConfirmedByMatchId(match.getId());
+        long confirmed = matchRepository.countOccupiedByMatchId(match.getId());
         long waiting = matchRepository.countWaitingByMatchId(match.getId());
         return new MatchSummaryResponse(
                 match.getId(), match.getScheduledAt(), match.getListClosesAt(),

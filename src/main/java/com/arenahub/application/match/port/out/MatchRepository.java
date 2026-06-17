@@ -37,7 +37,11 @@ public interface MatchRepository {
 
     List<PresenceEntry> findPresenceEntriesByMatchIdAndStatus(UUID matchId, PresenceStatus status);
 
+    List<PresenceEntry> findPresenceEntriesByMatchIdAndStatuses(UUID matchId, List<PresenceStatus> statuses);
+
     long countConfirmedByMatchId(UUID matchId);
+
+    long countOccupiedByMatchId(UUID matchId);
 
     WaitingEntry saveWaitingEntry(WaitingEntry entry);
 

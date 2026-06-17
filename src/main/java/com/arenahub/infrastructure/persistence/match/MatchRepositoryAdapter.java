@@ -96,8 +96,20 @@ public class MatchRepositoryAdapter implements MatchRepository {
     }
 
     @Override
+    public List<PresenceEntry> findPresenceEntriesByMatchIdAndStatuses(UUID matchId, List<PresenceStatus> statuses) {
+        return presenceRepo.findByMatchIdAndStatusIn(matchId, statuses).stream()
+                .map(PresenceEntryJpaEntity::toDomain).toList();
+    }
+
+    @Override
     public long countConfirmedByMatchId(UUID matchId) {
         return presenceRepo.countByMatchIdAndStatus(matchId, PresenceStatus.CONFIRMED);
+    }
+
+    @Override
+    public long countOccupiedByMatchId(UUID matchId) {
+        return presenceRepo.countByMatchIdAndStatusIn(matchId,
+                List.of(PresenceStatus.CONFIRMED, PresenceStatus.PAYMENT_PENDING));
     }
 
     @Override

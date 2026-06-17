@@ -104,7 +104,7 @@ class MatchServiceTest {
         when(groupRepo.findByIdAndDeletedAtIsNull(groupId)).thenReturn(Optional.of(activeGroup()));
         when(groupMemberPort.findMember(groupId, actorId)).thenReturn(Optional.of(adminView()));
         when(matchRepository.save(any(Match.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(matchRepository.countConfirmedByMatchId(any())).thenReturn(0L);
+        when(matchRepository.countOccupiedByMatchId(any())).thenReturn(0L);
         when(matchRepository.countWaitingByMatchId(any())).thenReturn(0L);
 
         MatchResponse response = matchService.execute(new CreateMatchUseCase.Command(
@@ -150,7 +150,7 @@ class MatchServiceTest {
         when(groupMemberPort.findMember(groupId, actorId)).thenReturn(Optional.of(adminView()));
         when(matchRepository.findByIdAndGroupId(matchId, groupId)).thenReturn(Optional.of(match));
         when(matchRepository.findPresenceEntry(matchId, memberId)).thenReturn(Optional.empty());
-        when(matchRepository.countConfirmedByMatchId(matchId)).thenReturn(2L);
+        when(matchRepository.countOccupiedByMatchId(matchId)).thenReturn(2L);
         when(matchRepository.savePresenceEntry(any())).thenAnswer(inv -> inv.getArgument(0));
         when(groupMemberPort.findMemberById(memberId)).thenReturn(Optional.of(adminView()));
 
@@ -169,7 +169,7 @@ class MatchServiceTest {
         when(groupMemberPort.findMember(groupId, actorId)).thenReturn(Optional.of(adminView()));
         when(matchRepository.findByIdAndGroupId(matchId, groupId)).thenReturn(Optional.of(match));
         when(matchRepository.findPresenceEntry(matchId, memberId)).thenReturn(Optional.empty());
-        when(matchRepository.countConfirmedByMatchId(matchId)).thenReturn(2L);
+        when(matchRepository.countOccupiedByMatchId(matchId)).thenReturn(2L);
         when(matchRepository.countWaitingByMatchId(matchId)).thenReturn(0L);
         when(matchRepository.saveWaitingEntry(any())).thenAnswer(inv -> inv.getArgument(0));
         when(groupMemberPort.findMemberById(memberId)).thenReturn(Optional.of(adminView()));

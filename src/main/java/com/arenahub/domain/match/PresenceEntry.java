@@ -30,6 +30,21 @@ public class PresenceEntry {
         return e;
     }
 
+    public static PresenceEntry awaitingPayment(UUID matchId, UUID groupId, UUID memberId) {
+        PresenceEntry e = new PresenceEntry();
+        e.id = UUID.randomUUID();
+        e.matchId = matchId;
+        e.groupId = groupId;
+        e.memberId = memberId;
+        e.status = PresenceStatus.PAYMENT_PENDING;
+        return e;
+    }
+
+    public void confirmAfterPayment() {
+        this.status = PresenceStatus.CONFIRMED;
+        this.confirmedAt = Instant.now();
+    }
+
     public static PresenceEntry decline(UUID matchId, UUID groupId, UUID memberId) {
         PresenceEntry e = new PresenceEntry();
         e.id = UUID.randomUUID();
