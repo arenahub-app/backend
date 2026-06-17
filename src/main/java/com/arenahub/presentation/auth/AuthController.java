@@ -2,6 +2,7 @@ package com.arenahub.presentation.auth;
 
 import com.arenahub.application.auth.dto.AuthTokens;
 import com.arenahub.application.auth.port.in.*;
+import com.arenahub.infrastructure.config.AuthProperties;
 import com.arenahub.infrastructure.config.JwtProperties;
 import com.arenahub.presentation.auth.dto.*;
 import jakarta.servlet.http.Cookie;
@@ -27,19 +28,22 @@ public class AuthController {
     private final LogoutUseCase logoutUseCase;
     private final VerifyEmailUseCase verifyEmailUseCase;
     private final JwtProperties jwtProperties;
+    private final AuthProperties authProperties;
 
     public AuthController(RegisterUserUseCase registerUserUseCase,
                           LoginUseCase loginUseCase,
                           RefreshSessionUseCase refreshSessionUseCase,
                           LogoutUseCase logoutUseCase,
                           VerifyEmailUseCase verifyEmailUseCase,
-                          JwtProperties jwtProperties) {
+                          JwtProperties jwtProperties,
+                          AuthProperties authProperties) {
         this.registerUserUseCase = registerUserUseCase;
         this.loginUseCase = loginUseCase;
         this.refreshSessionUseCase = refreshSessionUseCase;
         this.logoutUseCase = logoutUseCase;
         this.verifyEmailUseCase = verifyEmailUseCase;
         this.jwtProperties = jwtProperties;
+        this.authProperties = authProperties;
     }
 
     @PostMapping("/register")
@@ -49,7 +53,8 @@ public class AuthController {
                 req.name(), req.email(), req.password(), req.phone(), req.birthDate()));
         setRefreshTokenCookie(response, tokens.refreshToken());
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new AuthResponse(tokens.accessToken(), tokens.accessTokenExpiresInSeconds()));
+                .body(new AuthResponse(tokens.accessToken(), tokens.accessTokenExpiresInSeconds(),
+                        authProperties.emailVerificationEnabled()));
     }
 
     @PostMapping("/login")
