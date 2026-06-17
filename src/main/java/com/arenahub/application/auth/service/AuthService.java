@@ -8,6 +8,7 @@ import com.arenahub.domain.user.*;
 import com.arenahub.domain.user.vo.Email;
 import com.arenahub.domain.user.vo.Name;
 import com.arenahub.domain.user.vo.Phone;
+import com.arenahub.infrastructure.config.AuthProperties;
 import com.arenahub.infrastructure.config.FrontendProperties;
 import com.arenahub.infrastructure.config.JwtProperties;
 import com.arenahub.infrastructure.security.JwtService;
@@ -39,6 +40,7 @@ public class AuthService implements RegisterUserUseCase, LoginUseCase,
     private final PasswordEncoder passwordEncoder;
     private final EmailSenderPort emailSender;
     private final FrontendProperties frontendProperties;
+    private final AuthProperties authProperties;
 
     public AuthService(UserRepository userRepository,
                        RefreshTokenRepository refreshTokenRepository,
@@ -46,7 +48,8 @@ public class AuthService implements RegisterUserUseCase, LoginUseCase,
                        JwtProperties jwtProperties,
                        PasswordEncoder passwordEncoder,
                        EmailSenderPort emailSender,
-                       FrontendProperties frontendProperties) {
+                       FrontendProperties frontendProperties,
+                       AuthProperties authProperties) {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.jwtService = jwtService;
@@ -54,6 +57,7 @@ public class AuthService implements RegisterUserUseCase, LoginUseCase,
         this.passwordEncoder = passwordEncoder;
         this.emailSender = emailSender;
         this.frontendProperties = frontendProperties;
+        this.authProperties = authProperties;
     }
 
     @Override
@@ -73,13 +77,14 @@ public class AuthService implements RegisterUserUseCase, LoginUseCase,
         );
         User saved = userRepository.save(user);
 
-        String verificationToken = jwtService.generatePurposeToken(
-                saved.getId(), "email-verification", Duration.ofHours(24));
-        String verificationUrl = frontendProperties.baseUrl()
-                + "/verify-email?token=" + verificationToken;
-        String userEmail = saved.getEmail().value();
-
-        runAfterCommit(() -> emailSender.sendEmailVerification(userEmail, verificationUrl));
+        if (authProperties.emailVerificationEnabled()) {
+            String verificationToken = jwtService.generatePurposeToken(
+                    saved.getId(), "email-verification", Duration.ofHours(24));
+            String verificationUrl = frontendProperties.baseUrl()
+                    + "/verify-email?token=" + verificationToken;
+            String userEmail = saved.getEmail().value();
+            runAfterCommit(() -> emailSender.sendEmailVerification(userEmail, verificationUrl));
+        }
 
         return issueTokens(saved);
     }
@@ -91,7 +96,9 @@ public class AuthService implements RegisterUserUseCase, LoginUseCase,
                 .orElseThrow(InvalidCredentialsException::new);
 
         if (!user.isActive()) throw new AccountInactiveException();
-        if (!user.isEmailVerified()) throw new EmailNotVerifiedException();
+        if (authProperties.emailVerificationEnabled() && !user.isEmailVerified()) {
+            throw new EmailNotVerifiedException();
+        }
         if (user.getPasswordHash() == null
                 || !passwordEncoder.matches(command.password(), user.getPasswordHash())) {
             throw new InvalidCredentialsException();

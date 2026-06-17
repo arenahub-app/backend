@@ -71,6 +71,9 @@ springdoc:
     tags-sorter: alpha
 
 arenahub:
+  auth:
+    email-verification-enabled: ${AUTH_EMAIL_VERIFICATION_ENABLED:false}
+
   frontend:
     base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
 
