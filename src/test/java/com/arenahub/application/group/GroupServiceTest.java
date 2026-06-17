@@ -196,4 +196,59 @@ class GroupServiceTest {
                         GroupRole.PLAYER, null, null, null)))
                 .isInstanceOf(CannotDemoteOwnerException.class);
     }
+
+    @Test
+    void updateMember_memberCanUpdateOwnPosition() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        Group group = Group.create(new GroupName("Arena FC"), Sport.FOOTBALL, null);
+        GroupMember member = GroupMember.create(groupId, userId, GroupRole.PLAYER);
+
+        when(groupRepository.findById(groupId)).thenReturn(Optional.of(group));
+        when(groupRepository.findMemberByGroupIdAndUserId(groupId, userId)).thenReturn(Optional.of(member));
+        when(groupRepository.findMemberById(member.getId())).thenReturn(Optional.of(member));
+        when(groupRepository.saveMember(any())).thenReturn(member);
+        when(userRepository.findById(any())).thenReturn(Optional.empty());
+
+        assertThatCode(() -> groupService.execute(
+                new UpdateMemberUseCase.Command(groupId, member.getId(), userId,
+                        null, null, PlayerPosition.MIDFIELDER, null)))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void updateMember_memberCannotUpdateOwnSkill() {
+        UUID groupId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        Group group = Group.create(new GroupName("Arena FC"), Sport.FOOTBALL, null);
+        GroupMember member = GroupMember.create(groupId, userId, GroupRole.PLAYER);
+
+        when(groupRepository.findById(groupId)).thenReturn(Optional.of(group));
+        when(groupRepository.findMemberByGroupIdAndUserId(groupId, userId)).thenReturn(Optional.of(member));
+        when(groupRepository.findMemberById(member.getId())).thenReturn(Optional.of(member));
+
+        assertThatThrownBy(() -> groupService.execute(
+                new UpdateMemberUseCase.Command(groupId, member.getId(), userId,
+                        null, 4.5, null, null)))
+                .isInstanceOf(InsufficientRoleException.class);
+    }
+
+    @Test
+    void updateMember_playerCannotUpdateOtherMemberPosition() {
+        UUID groupId = UUID.randomUUID();
+        UUID requesterId = UUID.randomUUID();
+        UUID targetUserId = UUID.randomUUID();
+        Group group = Group.create(new GroupName("Arena FC"), Sport.FOOTBALL, null);
+        GroupMember requester = GroupMember.create(groupId, requesterId, GroupRole.PLAYER);
+        GroupMember target = GroupMember.create(groupId, targetUserId, GroupRole.PLAYER);
+
+        when(groupRepository.findById(groupId)).thenReturn(Optional.of(group));
+        when(groupRepository.findMemberByGroupIdAndUserId(groupId, requesterId)).thenReturn(Optional.of(requester));
+        when(groupRepository.findMemberById(target.getId())).thenReturn(Optional.of(target));
+
+        assertThatThrownBy(() -> groupService.execute(
+                new UpdateMemberUseCase.Command(groupId, target.getId(), requesterId,
+                        null, null, PlayerPosition.FORWARD, null)))
+                .isInstanceOf(InsufficientRoleException.class);
+    }
 }
