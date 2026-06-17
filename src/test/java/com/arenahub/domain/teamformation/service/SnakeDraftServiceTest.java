@@ -27,6 +27,10 @@ class SnakeDraftServiceTest {
         return new PlayerSnapshot(UUID.randomUUID(), name, BigDecimal.valueOf(skill), null, "PLAYER");
     }
 
+    private PlayerSnapshot playerWithPosition(String name, double skill, String position) {
+        return new PlayerSnapshot(UUID.randomUUID(), name, BigDecimal.valueOf(skill), position, "PLAYER");
+    }
+
     @Test
     void distribute_10players_2teams_each5Players() {
         List<PlayerSnapshot> players = List.of(
@@ -65,6 +69,34 @@ class SnakeDraftServiceTest {
 
         assertThat(teams).hasSize(2);
         teams.forEach(t -> assertThat(t.getPlayers()).isEmpty());
+    }
+
+    @Test
+    void distribute_withPositions_eachTeamGetsEqualPositionCount() {
+        List<PlayerSnapshot> players = List.of(
+                playerWithPosition("GK1", 5.0, "GOALKEEPER"),
+                playerWithPosition("GK2", 4.0, "GOALKEEPER"),
+                playerWithPosition("FW1", 5.0, "FORWARD"),
+                playerWithPosition("FW2", 3.0, "FORWARD"),
+                player("Flex1", 4.0),
+                player("Flex2", 3.0)
+        );
+
+        List<Team> teams = snakeDraftService.distribute(players, 2, groupId, formationId);
+
+        assertThat(teams).hasSize(2);
+        assertThat(teams.get(0).getPlayers()).hasSize(3);
+        assertThat(teams.get(1).getPlayers()).hasSize(3);
+
+        long gkA = teams.get(0).getPlayers().stream().filter(p -> "GOALKEEPER".equals(p.getPosition())).count();
+        long gkB = teams.get(1).getPlayers().stream().filter(p -> "GOALKEEPER".equals(p.getPosition())).count();
+        assertThat(gkA).isEqualTo(1);
+        assertThat(gkB).isEqualTo(1);
+
+        long fwA = teams.get(0).getPlayers().stream().filter(p -> "FORWARD".equals(p.getPosition())).count();
+        long fwB = teams.get(1).getPlayers().stream().filter(p -> "FORWARD".equals(p.getPosition())).count();
+        assertThat(fwA).isEqualTo(1);
+        assertThat(fwB).isEqualTo(1);
     }
 
     @Test

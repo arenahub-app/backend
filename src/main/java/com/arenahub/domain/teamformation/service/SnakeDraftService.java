@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 public class SnakeDraftService {
@@ -22,23 +23,38 @@ public class SnakeDraftService {
             teams.add(Team.create(formationId, groupId, name));
         }
 
-        List<PlayerSnapshot> sorted = new ArrayList<>(players);
-        sorted.sort((a, b) -> b.skill().compareTo(a.skill()));
+        Map<String, List<PlayerSnapshot>> byPosition = players.stream()
+                .filter(p -> p.position() != null)
+                .collect(Collectors.groupingBy(PlayerSnapshot::position));
 
-        for (int i = 0; i < sorted.size(); i++) {
-            int round = i / numberOfTeams;
-            int posInRound = i % numberOfTeams;
-            int teamIndex = (round % 2 == 0) ? posInRound : (numberOfTeams - 1 - posInRound);
-            Team team = teams.get(teamIndex);
-            PlayerSnapshot p = sorted.get(i);
-            team.addPlayer(TeamPlayer.create(team.getId(), groupId, p.memberId(), p.userName(), p.skill(), p.position()));
+        List<PlayerSnapshot> flex = players.stream()
+                .filter(p -> p.position() == null)
+                .collect(Collectors.toList());
+
+        for (List<PlayerSnapshot> group : byPosition.values()) {
+            snakeDraft(group, teams, groupId);
         }
+        snakeDraft(flex, teams, groupId);
 
         if (calcStdDev(teams).compareTo(STD_DEV_THRESHOLD) > 0) {
             trySwapsToEqualize(teams, groupId);
         }
 
         return teams;
+    }
+
+    private void snakeDraft(List<PlayerSnapshot> players, List<Team> teams, UUID groupId) {
+        List<PlayerSnapshot> sorted = new ArrayList<>(players);
+        sorted.sort((a, b) -> b.skill().compareTo(a.skill()));
+        int n = teams.size();
+        for (int i = 0; i < sorted.size(); i++) {
+            int round = i / n;
+            int posInRound = i % n;
+            int teamIndex = (round % 2 == 0) ? posInRound : (n - 1 - posInRound);
+            Team team = teams.get(teamIndex);
+            PlayerSnapshot p = sorted.get(i);
+            team.addPlayer(TeamPlayer.create(team.getId(), groupId, p.memberId(), p.userName(), p.skill(), p.position()));
+        }
     }
 
     private BigDecimal calcStdDev(List<Team> teams) {
@@ -65,6 +81,7 @@ public class SnakeDraftService {
                     Team tb = teams.get(j);
                     for (TeamPlayer pa : new ArrayList<>(ta.getPlayers())) {
                         for (TeamPlayer pb : new ArrayList<>(tb.getPlayers())) {
+                            if (!Objects.equals(pa.getPosition(), pb.getPosition())) continue;
                             ta.removePlayer(pa.getMemberId());
                             tb.removePlayer(pb.getMemberId());
                             ta.addPlayer(TeamPlayer.create(ta.getId(), groupId, pb.getMemberId(), pb.getUserName(), pb.getSkill(), pb.getPosition()));

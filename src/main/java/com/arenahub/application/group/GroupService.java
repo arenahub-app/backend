@@ -116,7 +116,14 @@ public class GroupService implements
             }
             target.changeRole(newRole);
         } else {
-            requireRole(requester, GroupRole.ADMIN);
+            boolean isSelf = requester.getId().equals(target.getId());
+            if (isSelf) {
+                if (cmd.skill() != null || cmd.subscriptionActive() != null) {
+                    throw new InsufficientRoleException();
+                }
+            } else {
+                requireRole(requester, GroupRole.ADMIN);
+            }
         }
 
         if (cmd.skill() != null) {
