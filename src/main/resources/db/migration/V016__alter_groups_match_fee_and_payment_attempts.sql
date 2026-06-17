@@ -17,7 +17,3 @@ ALTER TABLE payment_attempts
 
 COMMENT ON COLUMN payment_attempts.file_key IS
     'Chave do arquivo no R2. NULL apenas quando validation_source = MANUAL (aprovação sem comprovante).';
-
-CREATE TRIGGER trg_updated_at_charges
-    BEFORE UPDATE ON charges
-    FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
