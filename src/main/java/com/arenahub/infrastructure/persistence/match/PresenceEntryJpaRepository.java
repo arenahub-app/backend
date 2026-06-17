@@ -3,6 +3,7 @@ package com.arenahub.infrastructure.persistence.match;
 import com.arenahub.domain.match.vo.PresenceStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -15,5 +16,9 @@ public interface PresenceEntryJpaRepository extends JpaRepository<PresenceEntryJ
 
     List<PresenceEntryJpaEntity> findByMatchIdAndStatus(UUID matchId, PresenceStatus status);
 
+    List<PresenceEntryJpaEntity> findByMatchIdAndStatusIn(UUID matchId, Collection<PresenceStatus> statuses);
+
     long countByMatchIdAndStatus(UUID matchId, PresenceStatus status);
+
+    long countByMatchIdAndStatusIn(UUID matchId, Collection<PresenceStatus> statuses);
 }

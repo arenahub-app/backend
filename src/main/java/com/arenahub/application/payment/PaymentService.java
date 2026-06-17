@@ -7,6 +7,7 @@ import com.arenahub.application.payment.port.in.*;
 import com.arenahub.application.payment.port.out.ChargeRepository;
 import com.arenahub.application.payment.port.out.ChargeRepository.ChargeView;
 import com.arenahub.application.payment.port.out.FinancialEntryRepository;
+import com.arenahub.application.payment.port.out.PresencePort;
 import com.arenahub.application.storage.port.out.StoragePort;
 import com.arenahub.domain.financial.FinancialEntry;
 import com.arenahub.domain.financial.vo.EntryCategory;
@@ -37,17 +38,20 @@ public class PaymentService implements
     private final GroupMemberPort groupMemberPort;
     private final GroupJpaRepository groupRepo;
     private final StoragePort storagePort;
+    private final PresencePort presencePort;
 
     public PaymentService(ChargeRepository chargeRepository,
                           FinancialEntryRepository financialEntryRepository,
                           GroupMemberPort groupMemberPort,
                           GroupJpaRepository groupRepo,
-                          StoragePort storagePort) {
+                          StoragePort storagePort,
+                          PresencePort presencePort) {
         this.chargeRepository = chargeRepository;
         this.financialEntryRepository = financialEntryRepository;
         this.groupMemberPort = groupMemberPort;
         this.groupRepo = groupRepo;
         this.storagePort = storagePort;
+        this.presencePort = presencePort;
     }
 
     // ── Get Group Charges ─────────────────────────────────────────────────────
@@ -238,6 +242,10 @@ public class PaymentService implements
                 charge.getId(),
                 adminId);
         financialEntryRepository.save(entry);
+
+        if (charge.getReferenceMatchId() != null) {
+            presencePort.confirmAfterPayment(charge.getReferenceMatchId(), charge.getMemberId());
+        }
     }
 
     private GroupMemberView requireMember(UUID groupId, UUID userId) {

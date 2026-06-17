@@ -43,6 +43,7 @@ class PaymentServiceTest {
     @Mock GroupMemberPort groupMemberPort;
     @Mock GroupJpaRepository groupRepo;
     @Mock StoragePort storagePort;
+    @Mock com.arenahub.application.payment.port.out.PresencePort presencePort;
 
     private PaymentService service;
 
@@ -56,7 +57,7 @@ class PaymentServiceTest {
     @BeforeEach
     void setUp() {
         service = new PaymentService(chargeRepository, financialEntryRepository,
-                groupMemberPort, groupRepo, storagePort);
+                groupMemberPort, groupRepo, storagePort, presencePort);
     }
 
     // ── Submit Receipt ────────────────────────────────────────────────────────
