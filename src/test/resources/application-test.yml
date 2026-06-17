@@ -1,0 +1,8 @@
+arenahub:
+  storage:
+    r2:
+      endpoint: https://test.r2.cloudflarestorage.com
+      access-key: test-access-key
+      secret-key: test-secret-key
+      bucket: test-bucket
+      public-url: https://pub.test.r2.cloudflarestorage.com
