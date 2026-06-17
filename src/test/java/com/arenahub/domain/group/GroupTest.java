@@ -31,7 +31,7 @@ class GroupTest {
     void update_changesOnlyProvidedFields() {
         Group group = Group.create(new GroupName("Arena FC"), Sport.FOOTBALL, "Desc");
 
-        group.update(new GroupName("Arena SC"), null, null, "pix@key.com");
+        group.update(new GroupName("Arena SC"), null, null, "pix@key.com", null);
 
         assertThat(group.getName().value()).isEqualTo("Arena SC");
         assertThat(group.getSport()).isEqualTo(Sport.FOOTBALL);

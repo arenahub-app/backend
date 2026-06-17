@@ -67,7 +67,7 @@ public class GroupService implements
         requireActive(group);
 
         GroupName name = cmd.name() != null ? new GroupName(cmd.name()) : null;
-        group.update(name, cmd.sport(), cmd.description(), cmd.pixKey());
+        group.update(name, cmd.sport(), cmd.description(), cmd.pixKey(), cmd.matchFee());
         group = groupRepository.save(group);
 
         int count = groupRepository.findMembersByGroupId(cmd.groupId()).size();
@@ -251,7 +251,7 @@ public class GroupService implements
         return new GroupResponse(
                 group.getId(), group.getName().value(), group.getSport(),
                 group.getDescription(), group.getPhotoUrl(), group.getPixKey(),
-                group.getStatus(), memberCount, myRole,
+                group.getMatchFee(), group.getStatus(), memberCount, myRole,
                 group.getCreatedAt(), group.getUpdatedAt());
     }
 

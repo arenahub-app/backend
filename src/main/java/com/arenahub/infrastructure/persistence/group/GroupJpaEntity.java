@@ -9,6 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -39,6 +40,9 @@ public class GroupJpaEntity {
     @Column(name = "pix_key", length = 255)
     private String pixKey;
 
+    @Column(name = "match_fee", precision = 10, scale = 2)
+    private BigDecimal matchFee;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
     private GroupStatus status;
@@ -54,7 +58,7 @@ public class GroupJpaEntity {
 
     public Group toDomain() {
         return Group.reconstitute(id, new GroupName(name), sport, description,
-                photoUrl, pixKey, status, createdAt, updatedAt);
+                photoUrl, pixKey, matchFee, status, createdAt, updatedAt);
     }
 
     public static GroupJpaEntity fromDomain(Group group) {
@@ -65,6 +69,7 @@ public class GroupJpaEntity {
         e.description = group.getDescription();
         e.photoUrl = group.getPhotoUrl();
         e.pixKey = group.getPixKey();
+        e.matchFee = group.getMatchFee();
         e.status = group.getStatus();
         e.createdAt = group.getCreatedAt();
         e.updatedAt = group.getUpdatedAt();

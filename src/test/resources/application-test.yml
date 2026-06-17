@@ -1,0 +1,17 @@
+spring:
+  datasource:
+    url: jdbc:tc:postgresql:16:///arenahub
+    username: test
+    password: test
+
+arenahub:
+  jwt:
+    secret: test-jwt-secret-key-for-integration-tests-minimum-256-bits-hs256
+
+  storage:
+    r2:
+      endpoint: https://test.r2.cloudflarestorage.com
+      access-key: test-access-key
+      secret-key: test-secret-key
+      bucket: test-bucket
+      public-url: https://pub.test.r2.cloudflarestorage.com

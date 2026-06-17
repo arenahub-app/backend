@@ -88,7 +88,7 @@ class GroupServiceTest {
         when(groupRepository.findMemberByGroupIdAndUserId(groupId, userId)).thenReturn(Optional.of(player));
 
         assertThatThrownBy(() -> groupService.execute(
-                new UpdateGroupUseCase.Command(groupId, userId, "New Name", null, null, null)))
+                new UpdateGroupUseCase.Command(groupId, userId, "New Name", null, null, null, null)))
                 .isInstanceOf(InsufficientRoleException.class);
     }
 
