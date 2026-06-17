@@ -79,6 +79,10 @@ public class TeamFormation {
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("team-not-in-formation"));
 
+        if (fromTeam.getPlayers().size() <= 1) {
+            throw new IllegalStateException("cannot-empty-team");
+        }
+
         fromTeam.removePlayer(memberId);
         toTeam.addPlayer(TeamPlayer.create(toTeamId, movingPlayer.getGroupId(),
                 movingPlayer.getMemberId(), movingPlayer.getUserName(),

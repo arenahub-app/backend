@@ -19,6 +19,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.*;
@@ -47,8 +48,6 @@ class TeamFormationControllerIT {
     private String player2Token;
     private String groupId;
     private String matchId;
-    private String ownerMemberId;
-    private String player2MemberId;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -56,9 +55,13 @@ class TeamFormationControllerIT {
 
         String ownerEmail = "tf-owner-" + UUID.randomUUID() + "@test.com";
         String player2Email = "tf-p2-" + UUID.randomUUID() + "@test.com";
+        String player3Email = "tf-p3-" + UUID.randomUUID() + "@test.com";
+        String player4Email = "tf-p4-" + UUID.randomUUID() + "@test.com";
 
         ownerToken = registerAndLogin(ownerEmail, "Owner");
         player2Token = registerAndLogin(player2Email, "Player2");
+        String player3Token = registerAndLogin(player3Email, "Player3");
+        String player4Token = registerAndLogin(player4Email, "Player4");
 
         MvcResult groupResult = mvc.perform(post("/api/v1/groups")
                         .header("Authorization", "Bearer " + ownerToken)
@@ -76,23 +79,10 @@ class TeamFormationControllerIT {
                 .andReturn();
         String inviteToken = objectMapper.readTree(inviteResult.getResponse().getContentAsString()).get("token").asText();
 
-        mvc.perform(post("/api/v1/invites/{token}/join", inviteToken)
-                        .header("Authorization", "Bearer " + player2Token))
-                .andExpect(status().isOk());
-
-        MvcResult membersResult = mvc.perform(get("/api/v1/groups/{groupId}/members", groupId)
-                        .header("Authorization", "Bearer " + ownerToken))
-                .andExpect(status().isOk())
-                .andReturn();
-        JsonNode members = objectMapper.readTree(membersResult.getResponse().getContentAsString());
-        for (JsonNode member : members) {
-            String role = member.get("role").asText();
-            String userId = member.get("userId").asText();
-            if ("OWNER".equals(role)) {
-                ownerMemberId = member.get("id").asText();
-            } else {
-                player2MemberId = member.get("id").asText();
-            }
+        for (String token : List.of(player2Token, player3Token, player4Token)) {
+            mvc.perform(post("/api/v1/invites/{token}/join", inviteToken)
+                            .header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk());
         }
 
         String futureDate = Instant.now().plus(2, ChronoUnit.DAYS).toString();
@@ -110,17 +100,13 @@ class TeamFormationControllerIT {
                 .andReturn();
         matchId = objectMapper.readTree(matchResult.getResponse().getContentAsString()).get("id").asText();
 
-        mvc.perform(post("/api/v1/groups/{groupId}/matches/{matchId}/presence", groupId, matchId)
-                        .header("Authorization", "Bearer " + ownerToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"action\": \"CONFIRM\"}"))
-                .andExpect(status().isOk());
-
-        mvc.perform(post("/api/v1/groups/{groupId}/matches/{matchId}/presence", groupId, matchId)
-                        .header("Authorization", "Bearer " + player2Token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"action\": \"CONFIRM\"}"))
-                .andExpect(status().isOk());
+        for (String token : List.of(ownerToken, player2Token, player3Token, player4Token)) {
+            mvc.perform(post("/api/v1/groups/{groupId}/matches/{matchId}/presence", groupId, matchId)
+                            .header("Authorization", "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"action\": \"CONFIRM\"}"))
+                    .andExpect(status().isOk());
+        }
 
         mvc.perform(post("/api/v1/groups/{groupId}/matches/{matchId}/close-list", groupId, matchId)
                         .header("Authorization", "Bearer " + ownerToken))

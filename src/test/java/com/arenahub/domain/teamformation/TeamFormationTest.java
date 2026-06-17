@@ -48,7 +48,10 @@ class TeamFormationTest {
 
         UUID member1 = UUID.randomUUID();
         UUID member2 = UUID.randomUUID();
+        UUID member3 = UUID.randomUUID();
         Team teamA = createTeamWithPlayer(formation.getId(), "Time A", member1);
+        TeamPlayer extra = TeamPlayer.create(teamA.getId(), groupId, member3, "Extra", BigDecimal.valueOf(3.0), null);
+        teamA.addPlayer(extra);
         Team teamB = createTeamWithPlayer(formation.getId(), "Time B", member2);
 
         TeamFormation f = TeamFormation.reconstitute(formation.getId(), matchId, groupId, 2,
@@ -57,6 +60,25 @@ class TeamFormationTest {
         f.movePlayer(member1, teamB.getId());
 
         assertThat(f.getFormationType()).isEqualTo(FormationType.MANUAL_ADJUSTED);
+        assertThat(teamA.getPlayers()).hasSize(1);
+        assertThat(teamB.getPlayers()).hasSize(2);
+    }
+
+    @Test
+    void movePlayer_throwsWhenWouldLeaveTeamEmpty() {
+        TeamFormation formation = createFormation(2);
+
+        UUID member1 = UUID.randomUUID();
+        UUID member2 = UUID.randomUUID();
+        Team teamA = createTeamWithPlayer(formation.getId(), "Time A", member1);
+        Team teamB = createTeamWithPlayer(formation.getId(), "Time B", member2);
+
+        TeamFormation f = TeamFormation.reconstitute(formation.getId(), matchId, groupId, 2,
+                FormationType.AUTOMATIC, confirmedBy, formation.getConfirmedAt(), List.of(teamA, teamB));
+
+        assertThatThrownBy(() -> f.movePlayer(member1, teamB.getId()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("cannot-empty-team");
     }
 
     @Test

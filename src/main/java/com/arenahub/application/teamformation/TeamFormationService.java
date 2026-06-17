@@ -119,6 +119,7 @@ public class TeamFormationService implements
                 case "player-not-in-formation" -> throw new PlayerNotInFormationException();
                 case "player-already-in-team" -> throw new PlayerAlreadyInTeamException();
                 case "team-not-in-formation" -> throw new TeamNotInFormationException();
+                case "cannot-empty-team" -> throw new CannotEmptyTeamException();
                 default -> throw ex;
             }
         }
