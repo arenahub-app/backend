@@ -15,6 +15,7 @@ public class SnakeDraftService {
 
     private static final BigDecimal STD_DEV_THRESHOLD = new BigDecimal("0.5");
     private static final int MAX_SWAP_ITERATIONS = 50;
+    private static final String GOALKEEPER = "GOALKEEPER";
 
     public List<Team> distribute(List<PlayerSnapshot> players, int numberOfTeams, UUID groupId, UUID formationId) {
         List<Team> teams = new ArrayList<>();
@@ -23,11 +24,18 @@ public class SnakeDraftService {
             teams.add(Team.create(formationId, groupId, name));
         }
 
-        Map<String, List<PlayerSnapshot>> byPosition = players.stream()
+        // Goalkeepers are distributed separately and excluded from skill equalization
+        List<PlayerSnapshot> goalkeepers = players.stream()
+                .filter(p -> GOALKEEPER.equals(p.position()))
+                .collect(Collectors.toList());
+        List<PlayerSnapshot> outfield = players.stream()
+                .filter(p -> !GOALKEEPER.equals(p.position()))
+                .collect(Collectors.toList());
+
+        Map<String, List<PlayerSnapshot>> byPosition = outfield.stream()
                 .filter(p -> p.position() != null)
                 .collect(Collectors.groupingBy(PlayerSnapshot::position));
-
-        List<PlayerSnapshot> flex = players.stream()
+        List<PlayerSnapshot> flex = outfield.stream()
                 .filter(p -> p.position() == null)
                 .collect(Collectors.toList());
 
@@ -36,8 +44,15 @@ public class SnakeDraftService {
         }
         snakeDraft(flex, teams, groupId);
 
-        if (calcStdDev(teams).compareTo(STD_DEV_THRESHOLD) > 0) {
+        if (calcOutfieldStdDev(teams).compareTo(STD_DEV_THRESHOLD) > 0) {
             trySwapsToEqualize(teams, groupId);
+        }
+
+        // Distribute goalkeepers round-robin after outfield balance is settled
+        for (int i = 0; i < goalkeepers.size(); i++) {
+            Team team = teams.get(i % teams.size());
+            PlayerSnapshot gk = goalkeepers.get(i);
+            team.addPlayer(TeamPlayer.create(team.getId(), groupId, gk.memberId(), gk.userName(), gk.skill(), gk.position()));
         }
 
         return teams;
@@ -57,14 +72,24 @@ public class SnakeDraftService {
         }
     }
 
-    private BigDecimal calcStdDev(List<Team> teams) {
+    private BigDecimal calcOutfieldAvg(Team team) {
+        List<TeamPlayer> outfield = team.getPlayers().stream()
+                .filter(p -> !GOALKEEPER.equals(p.getPosition()))
+                .collect(Collectors.toList());
+        if (outfield.isEmpty()) return BigDecimal.ZERO;
+        return outfield.stream()
+                .map(TeamPlayer::getSkill)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .divide(BigDecimal.valueOf(outfield.size()), 4, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal calcOutfieldStdDev(List<Team> teams) {
         if (teams.size() < 2) return BigDecimal.ZERO;
-        BigDecimal sum = teams.stream()
-                .map(Team::getAverageSkill)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal mean = sum.divide(BigDecimal.valueOf(teams.size()), 4, RoundingMode.HALF_UP);
-        BigDecimal variance = teams.stream()
-                .map(t -> t.getAverageSkill().subtract(mean).pow(2))
+        List<BigDecimal> avgs = teams.stream().map(this::calcOutfieldAvg).collect(Collectors.toList());
+        BigDecimal mean = avgs.stream().reduce(BigDecimal.ZERO, BigDecimal::add)
+                .divide(BigDecimal.valueOf(teams.size()), 4, RoundingMode.HALF_UP);
+        BigDecimal variance = avgs.stream()
+                .map(avg -> avg.subtract(mean).pow(2))
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .divide(BigDecimal.valueOf(teams.size()), 4, RoundingMode.HALF_UP);
         return BigDecimal.valueOf(Math.sqrt(variance.doubleValue()))
@@ -74,19 +99,20 @@ public class SnakeDraftService {
     private void trySwapsToEqualize(List<Team> teams, UUID groupId) {
         for (int iter = 0; iter < MAX_SWAP_ITERATIONS; iter++) {
             boolean improved = false;
-            BigDecimal currentDev = calcStdDev(teams);
+            BigDecimal currentDev = calcOutfieldStdDev(teams);
             for (int i = 0; i < teams.size() - 1; i++) {
                 for (int j = i + 1; j < teams.size(); j++) {
                     Team ta = teams.get(i);
                     Team tb = teams.get(j);
                     for (TeamPlayer pa : new ArrayList<>(ta.getPlayers())) {
                         for (TeamPlayer pb : new ArrayList<>(tb.getPlayers())) {
+                            if (GOALKEEPER.equals(pa.getPosition()) || GOALKEEPER.equals(pb.getPosition())) continue;
                             if (!Objects.equals(pa.getPosition(), pb.getPosition())) continue;
                             ta.removePlayer(pa.getMemberId());
                             tb.removePlayer(pb.getMemberId());
                             ta.addPlayer(TeamPlayer.create(ta.getId(), groupId, pb.getMemberId(), pb.getUserName(), pb.getSkill(), pb.getPosition()));
                             tb.addPlayer(TeamPlayer.create(tb.getId(), groupId, pa.getMemberId(), pa.getUserName(), pa.getSkill(), pa.getPosition()));
-                            BigDecimal newDev = calcStdDev(teams);
+                            BigDecimal newDev = calcOutfieldStdDev(teams);
                             if (newDev.compareTo(currentDev) < 0) {
                                 currentDev = newDev;
                                 improved = true;

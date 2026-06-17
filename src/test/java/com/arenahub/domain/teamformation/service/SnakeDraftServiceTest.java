@@ -74,8 +74,8 @@ class SnakeDraftServiceTest {
     @Test
     void distribute_withPositions_eachTeamGetsEqualPositionCount() {
         List<PlayerSnapshot> players = List.of(
-                playerWithPosition("GK1", 5.0, "GOALKEEPER"),
-                playerWithPosition("GK2", 4.0, "GOALKEEPER"),
+                playerWithPosition("GK1", 5.5, "GOALKEEPER"),
+                playerWithPosition("GK2", 3.0, "GOALKEEPER"),
                 playerWithPosition("FW1", 5.0, "FORWARD"),
                 playerWithPosition("FW2", 3.0, "FORWARD"),
                 player("Flex1", 4.0),
@@ -97,6 +97,40 @@ class SnakeDraftServiceTest {
         long fwB = teams.get(1).getPlayers().stream().filter(p -> "FORWARD".equals(p.getPosition())).count();
         assertThat(fwA).isEqualTo(1);
         assertThat(fwB).isEqualTo(1);
+    }
+
+    @Test
+    void distribute_goalkeepersExcludedFromSkillEqualization() {
+        // GKs with very different skills should not affect which team has better outfield average
+        List<PlayerSnapshot> players = List.of(
+                playerWithPosition("GK_Elite", 6.0, "GOALKEEPER"),
+                playerWithPosition("GK_Weak",  1.0, "GOALKEEPER"),
+                playerWithPosition("FW_A", 5.0, "FORWARD"),
+                playerWithPosition("FW_B", 5.0, "FORWARD"),
+                player("Mid_A", 4.0),
+                player("Mid_B", 4.0)
+        );
+
+        List<Team> teams = snakeDraftService.distribute(players, 2, groupId, formationId);
+
+        // Each team must have exactly 1 GK
+        long gkA = teams.get(0).getPlayers().stream().filter(p -> "GOALKEEPER".equals(p.getPosition())).count();
+        long gkB = teams.get(1).getPlayers().stream().filter(p -> "GOALKEEPER".equals(p.getPosition())).count();
+        assertThat(gkA).isEqualTo(1);
+        assertThat(gkB).isEqualTo(1);
+
+        // Outfield average must be equal (4.5 each), regardless of GK skill difference
+        BigDecimal outfieldAvgA = teams.get(0).getPlayers().stream()
+                .filter(p -> !"GOALKEEPER".equals(p.getPosition()))
+                .map(p -> p.getSkill())
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .divide(BigDecimal.valueOf(2), 4, java.math.RoundingMode.HALF_UP);
+        BigDecimal outfieldAvgB = teams.get(1).getPlayers().stream()
+                .filter(p -> !"GOALKEEPER".equals(p.getPosition()))
+                .map(p -> p.getSkill())
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .divide(BigDecimal.valueOf(2), 4, java.math.RoundingMode.HALF_UP);
+        assertThat(outfieldAvgA).isEqualByComparingTo(outfieldAvgB);
     }
 
     @Test
