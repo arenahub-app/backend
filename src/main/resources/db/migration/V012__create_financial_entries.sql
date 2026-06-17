@@ -6,7 +6,7 @@ CREATE TABLE financial_entries (
     amount           NUMERIC(10, 2)           NOT NULL,
     description      TEXT                     NOT NULL,
     match_id         UUID,
-    reference_month  VARCHAR(7),
+    reference_month  CHAR(7),
     source_charge_id UUID,
     registered_by    UUID                     NOT NULL,
     registered_at    TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
