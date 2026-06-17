@@ -12,8 +12,6 @@ import com.arenahub.domain.financial.FinancialEntry;
 import com.arenahub.domain.financial.vo.EntryCategory;
 import com.arenahub.domain.payment.Charge;
 import com.arenahub.domain.payment.PaymentAttempt;
-import com.arenahub.domain.payment.vo.ChargeStatus;
-import com.arenahub.domain.payment.vo.ValidationResult;
 import com.arenahub.infrastructure.persistence.group.GroupJpaRepository;
 import com.arenahub.presentation.payment.dto.*;
 import org.springframework.stereotype.Service;

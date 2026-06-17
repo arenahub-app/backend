@@ -3,7 +3,6 @@ package com.arenahub.presentation.payment;
 import com.arenahub.application.payment.port.in.*;
 import com.arenahub.domain.payment.vo.ChargeStatus;
 import com.arenahub.presentation.payment.dto.*;
-import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
