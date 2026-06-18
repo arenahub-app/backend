@@ -3,6 +3,7 @@ package com.arenahub.application.payment;
 import com.arenahub.application.exception.*;
 import com.arenahub.application.match.port.out.GroupMemberPort;
 import com.arenahub.application.match.port.out.GroupMemberPort.GroupMemberView;
+import com.arenahub.application.match.port.out.GuestRepository;
 import com.arenahub.application.payment.port.in.*;
 import com.arenahub.application.payment.port.out.ChargeRepository;
 import com.arenahub.application.payment.port.out.ChargeRepository.ChargeView;
@@ -11,6 +12,7 @@ import com.arenahub.application.payment.port.out.PresencePort;
 import com.arenahub.application.storage.port.out.StoragePort;
 import com.arenahub.domain.financial.FinancialEntry;
 import com.arenahub.domain.financial.vo.EntryCategory;
+import com.arenahub.domain.group.vo.GroupRole;
 import com.arenahub.domain.payment.Charge;
 import com.arenahub.domain.payment.PaymentAttempt;
 import com.arenahub.infrastructure.persistence.group.GroupJpaRepository;
@@ -39,19 +41,22 @@ public class PaymentService implements
     private final GroupJpaRepository groupRepo;
     private final StoragePort storagePort;
     private final PresencePort presencePort;
+    private final GuestRepository guestRepository;
 
     public PaymentService(ChargeRepository chargeRepository,
                           FinancialEntryRepository financialEntryRepository,
                           GroupMemberPort groupMemberPort,
                           GroupJpaRepository groupRepo,
                           StoragePort storagePort,
-                          PresencePort presencePort) {
+                          PresencePort presencePort,
+                          GuestRepository guestRepository) {
         this.chargeRepository = chargeRepository;
         this.financialEntryRepository = financialEntryRepository;
         this.groupMemberPort = groupMemberPort;
         this.groupRepo = groupRepo;
         this.storagePort = storagePort;
         this.presencePort = presencePort;
+        this.guestRepository = guestRepository;
     }
 
     // ── Get Group Charges ─────────────────────────────────────────────────────
@@ -61,7 +66,7 @@ public class PaymentService implements
     public ChargePageResponse execute(GetGroupChargesUseCase.Command cmd) {
         GroupMemberView actor = requireMember(cmd.groupId(), cmd.actorUserId());
 
-        if (!actor.role().isAtLeast(com.arenahub.domain.group.vo.GroupRole.ADMIN)) {
+        if (!actor.role().isAtLeast(GroupRole.ADMIN)) {
             return myChargesPage(actor.id());
         }
 
@@ -112,9 +117,11 @@ public class PaymentService implements
         GroupMemberView actor = requireMember(cmd.groupId(), cmd.actorUserId());
         Charge charge = requireCharge(cmd.chargeId(), cmd.groupId());
 
-        boolean isAdmin = actor.role().isAtLeast(com.arenahub.domain.group.vo.GroupRole.ADMIN);
-        if (!isAdmin && !charge.getMemberId().equals(actor.id())) {
-            throw new InsufficientRoleException();
+        boolean isAdmin = actor.role().isAtLeast(GroupRole.ADMIN);
+        if (!isAdmin) {
+            if (charge.isGuestCharge() || !charge.getMemberId().equals(actor.id())) {
+                throw new InsufficientRoleException();
+            }
         }
 
         String pixKey = groupRepo.findByIdAndDeletedAtIsNull(cmd.groupId())
@@ -122,11 +129,22 @@ public class PaymentService implements
                 .orElse(null);
 
         List<PaymentAttempt> attempts = chargeRepository.findAttemptsByChargeId(cmd.chargeId());
-        String memberName = groupMemberPort.findMemberById(charge.getMemberId())
-                .map(GroupMemberView::userName).orElse(null);
+
+        String memberName = null;
+        UUID guestId = null;
+        String guestName = null;
+        if (charge.isGuestCharge()) {
+            guestId = charge.getGuestId();
+            guestName = guestRepository.findById(guestId)
+                    .map(g -> g.getName()).orElse(null);
+        } else {
+            memberName = groupMemberPort.findMemberById(charge.getMemberId())
+                    .map(GroupMemberView::userName).orElse(null);
+        }
 
         return new ChargeDetailResponse(
                 charge.getId(), charge.getMemberId(), memberName,
+                guestId, guestName,
                 charge.getType(), charge.getAmount(), pixKey,
                 charge.getReferenceMatchId(), null,
                 charge.getStatus(), charge.getCreatedAt(),
@@ -140,8 +158,12 @@ public class PaymentService implements
         GroupMemberView actor = requireMember(cmd.groupId(), cmd.actorUserId());
         Charge charge = requireCharge(cmd.chargeId(), cmd.groupId());
 
-        if (!charge.getMemberId().equals(actor.id())) {
-            throw new InsufficientRoleException();
+        if (charge.isGuestCharge()) {
+            requireAdmin(actor);
+        } else {
+            if (!charge.getMemberId().equals(actor.id())) {
+                throw new InsufficientRoleException();
+            }
         }
         if (!charge.isPending()) {
             throw new ChargeNotPendingException();
@@ -244,7 +266,14 @@ public class PaymentService implements
         financialEntryRepository.save(entry);
 
         if (charge.getReferenceMatchId() != null) {
-            presencePort.confirmAfterPayment(charge.getReferenceMatchId(), charge.getMemberId());
+            if (charge.isGuestCharge()) {
+                guestRepository.findById(charge.getGuestId()).ifPresent(guest -> {
+                    guest.confirmAfterPayment();
+                    guestRepository.save(guest);
+                });
+            } else {
+                presencePort.confirmAfterPayment(charge.getReferenceMatchId(), charge.getMemberId());
+            }
         }
     }
 
@@ -254,7 +283,7 @@ public class PaymentService implements
     }
 
     private void requireAdmin(GroupMemberView member) {
-        if (!member.role().isAtLeast(com.arenahub.domain.group.vo.GroupRole.ADMIN)) {
+        if (!member.role().isAtLeast(GroupRole.ADMIN)) {
             throw new InsufficientRoleException();
         }
     }
@@ -266,7 +295,9 @@ public class PaymentService implements
 
     private ChargeResponse toChargeResponse(ChargeView v) {
         return new ChargeResponse(
-                v.chargeId(), v.memberId(), v.memberName(), v.type(), v.amount(),
+                v.chargeId(), v.memberId(), v.memberName(),
+                v.guestId(), v.guestName(),
+                v.type(), v.amount(),
                 v.referenceMatchId(), v.matchScheduledAt(), v.status(),
                 v.latestAttemptStatus(), v.createdAt());
     }

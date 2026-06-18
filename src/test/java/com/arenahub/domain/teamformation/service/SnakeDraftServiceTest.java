@@ -24,11 +24,11 @@ class SnakeDraftServiceTest {
     }
 
     private PlayerSnapshot player(String name, double skill) {
-        return new PlayerSnapshot(UUID.randomUUID(), name, BigDecimal.valueOf(skill), null, "PLAYER");
+        return new PlayerSnapshot(UUID.randomUUID(), null, name, BigDecimal.valueOf(skill), null, "PLAYER");
     }
 
     private PlayerSnapshot playerWithPosition(String name, double skill, String position) {
-        return new PlayerSnapshot(UUID.randomUUID(), name, BigDecimal.valueOf(skill), position, "PLAYER");
+        return new PlayerSnapshot(UUID.randomUUID(), null, name, BigDecimal.valueOf(skill), position, "PLAYER");
     }
 
     @Test

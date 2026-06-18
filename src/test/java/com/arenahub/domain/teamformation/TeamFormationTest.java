@@ -57,7 +57,7 @@ class TeamFormationTest {
         TeamFormation f = TeamFormation.reconstitute(formation.getId(), matchId, groupId, 2,
                 FormationType.AUTOMATIC, confirmedBy, formation.getConfirmedAt(), List.of(teamA, teamB));
 
-        f.movePlayer(member1, teamB.getId());
+        f.movePlayer(member1, null, teamB.getId());
 
         assertThat(f.getFormationType()).isEqualTo(FormationType.MANUAL_ADJUSTED);
         assertThat(teamA.getPlayers()).hasSize(1);
@@ -76,7 +76,7 @@ class TeamFormationTest {
         TeamFormation f = TeamFormation.reconstitute(formation.getId(), matchId, groupId, 2,
                 FormationType.AUTOMATIC, confirmedBy, formation.getConfirmedAt(), List.of(teamA, teamB));
 
-        assertThatThrownBy(() -> f.movePlayer(member1, teamB.getId()))
+        assertThatThrownBy(() -> f.movePlayer(member1, null, teamB.getId()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("cannot-empty-team");
     }
@@ -93,7 +93,7 @@ class TeamFormationTest {
         TeamFormation f = TeamFormation.reconstitute(formation.getId(), matchId, groupId, 2,
                 FormationType.AUTOMATIC, confirmedBy, formation.getConfirmedAt(), List.of(teamA, teamB));
 
-        assertThatThrownBy(() -> f.movePlayer(randomMember, randomTeam))
+        assertThatThrownBy(() -> f.movePlayer(randomMember, null, randomTeam))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("player-not-in-formation");
     }
@@ -109,7 +109,7 @@ class TeamFormationTest {
         TeamFormation f = TeamFormation.reconstitute(formation.getId(), matchId, groupId, 2,
                 FormationType.AUTOMATIC, confirmedBy, formation.getConfirmedAt(), List.of(teamA, teamB));
 
-        assertThatThrownBy(() -> f.movePlayer(member1, teamA.getId()))
+        assertThatThrownBy(() -> f.movePlayer(member1, null, teamA.getId()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("player-already-in-team");
     }
@@ -126,7 +126,7 @@ class TeamFormationTest {
         TeamFormation f = TeamFormation.reconstitute(formation.getId(), matchId, groupId, 2,
                 FormationType.AUTOMATIC, confirmedBy, formation.getConfirmedAt(), List.of(teamA, teamB));
 
-        assertThatThrownBy(() -> f.movePlayer(member1, unknownTeamId))
+        assertThatThrownBy(() -> f.movePlayer(member1, null, unknownTeamId))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("team-not-in-formation");
     }

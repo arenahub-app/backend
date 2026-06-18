@@ -58,7 +58,7 @@ public class TeamFormationController {
                                                              Authentication auth) {
         TeamFormationResponse response = movePlayerUseCase.execute(
                 new MovePlayerUseCase.Command(groupId, matchId, formationId, currentUserId(auth),
-                        req.memberId(), req.toTeamId()));
+                        req.memberId(), req.guestId(), req.toTeamId()));
         return ResponseEntity.ok(response);
     }
 

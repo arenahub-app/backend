@@ -39,4 +39,31 @@ public class ChargePortImpl implements ChargePort {
 
         return new ChargeView(saved.getId(), saved.getAmount(), pixKey, saved.getStatus());
     }
+
+    @Override
+    public ChargeView createDailyForGuest(UUID groupId, UUID guestId, BigDecimal amount, UUID matchId) {
+        Charge charge = Charge.createDailyForGuest(groupId, guestId, amount, matchId);
+        ChargeJpaEntity saved = chargeRepo.save(ChargeJpaEntity.fromDomain(charge));
+
+        String pixKey = groupRepo.findByIdAndDeletedAtIsNull(groupId)
+                .map(g -> g.getPixKey()).orElse(null);
+
+        return new ChargeView(saved.getId(), saved.getAmount(), pixKey, saved.getStatus());
+    }
+
+    @Override
+    public boolean existsPendingOrApprovedForGuest(UUID matchId, UUID guestId) {
+        return chargeRepo.existsByReferenceMatchIdAndGuestIdAndStatusIn(
+                matchId, guestId, List.of(ChargeStatus.PENDING, ChargeStatus.APPROVED));
+    }
+
+    @Override
+    public void cancelGuestCharge(UUID matchId, UUID guestId, String note) {
+        chargeRepo.findByReferenceMatchIdAndGuestId(matchId, guestId).ifPresent(entity -> {
+            if (entity.getStatus() == ChargeStatus.PENDING) {
+                entity.setStatus(ChargeStatus.REJECTED);
+                chargeRepo.save(entity);
+            }
+        });
+    }
 }

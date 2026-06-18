@@ -9,5 +9,5 @@ public interface MovePlayerUseCase {
     TeamFormationResponse execute(Command command);
 
     record Command(UUID groupId, UUID matchId, UUID formationId, UUID actorUserId,
-                   UUID memberId, UUID toTeamId) {}
+                   UUID memberId, UUID guestId, UUID toTeamId) {}
 }

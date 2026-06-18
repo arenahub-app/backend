@@ -10,5 +10,5 @@ public interface MatchPresencePort {
 
     record MatchPresenceSnapshot(boolean presenceListClosed, List<PlayerSnapshot> confirmedPlayers) {}
 
-    record PlayerSnapshot(UUID memberId, String userName, BigDecimal skill, String position, String role) {}
+    record PlayerSnapshot(UUID memberId, UUID guestId, String userName, BigDecimal skill, String position, String role) {}
 }

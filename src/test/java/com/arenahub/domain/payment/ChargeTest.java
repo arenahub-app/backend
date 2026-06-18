@@ -59,7 +59,7 @@ class ChargeTest {
     void reconstitute_restoresAllFields() {
         UUID id = UUID.randomUUID();
         var now = java.time.Instant.now();
-        Charge charge = Charge.reconstitute(id, groupId, memberId, ChargeType.DAILY,
+        Charge charge = Charge.reconstitute(id, groupId, memberId, null, ChargeType.DAILY,
                 new BigDecimal("30.00"), matchId, null, ChargeStatus.APPROVED, now, now);
 
         assertThat(charge.getId()).isEqualTo(id);

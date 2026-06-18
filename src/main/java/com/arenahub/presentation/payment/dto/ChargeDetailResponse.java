@@ -12,6 +12,8 @@ public record ChargeDetailResponse(
         UUID chargeId,
         UUID memberId,
         String memberName,
+        UUID guestId,
+        String guestName,
         ChargeType type,
         BigDecimal amount,
         String pixKey,

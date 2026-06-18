@@ -80,7 +80,7 @@ class TeamFormationServiceTest {
     }
 
     private MatchPresencePort.PlayerSnapshot playerSnapshot(double skill, String role) {
-        return new MatchPresencePort.PlayerSnapshot(UUID.randomUUID(), "Player", BigDecimal.valueOf(skill), null, role);
+        return new MatchPresencePort.PlayerSnapshot(UUID.randomUUID(), null, "Player", BigDecimal.valueOf(skill), null, role);
     }
 
     @Test

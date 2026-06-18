@@ -12,6 +12,8 @@ public record ChargeResponse(
         UUID chargeId,
         UUID memberId,
         String memberName,
+        UUID guestId,
+        String guestName,
         ChargeType type,
         BigDecimal amount,
         UUID referenceMatchId,

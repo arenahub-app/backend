@@ -2,12 +2,15 @@ package com.arenahub.infrastructure.persistence.teamformation;
 
 import com.arenahub.application.teamformation.port.out.MatchPresencePort;
 import com.arenahub.application.teamformation.port.out.TeamFormationRepository;
+import com.arenahub.domain.match.vo.GuestStatus;
 import com.arenahub.domain.match.vo.PresenceStatus;
 import com.arenahub.domain.teamformation.Team;
 import com.arenahub.domain.teamformation.TeamFormation;
 import com.arenahub.domain.teamformation.TeamPlayer;
 import com.arenahub.infrastructure.persistence.group.GroupMemberJpaEntity;
 import com.arenahub.infrastructure.persistence.group.GroupMemberJpaRepository;
+import com.arenahub.infrastructure.persistence.match.MatchGuestJpaEntity;
+import com.arenahub.infrastructure.persistence.match.MatchGuestJpaRepository;
 import com.arenahub.infrastructure.persistence.match.MatchJpaEntity;
 import com.arenahub.infrastructure.persistence.match.MatchJpaRepository;
 import com.arenahub.infrastructure.persistence.match.PresenceEntryJpaEntity;
@@ -31,6 +34,7 @@ public class TeamFormationRepositoryAdapter implements TeamFormationRepository, 
     private final GroupMemberJpaRepository memberRepo;
     private final UserJpaRepository userRepo;
     private final MatchJpaRepository matchRepo;
+    private final MatchGuestJpaRepository guestRepo;
 
     public TeamFormationRepositoryAdapter(TeamFormationJpaRepository formationRepo,
                                           TeamJpaRepository teamRepo,
@@ -38,7 +42,8 @@ public class TeamFormationRepositoryAdapter implements TeamFormationRepository, 
                                           PresenceEntryJpaRepository presenceEntryRepo,
                                           GroupMemberJpaRepository memberRepo,
                                           UserJpaRepository userRepo,
-                                          MatchJpaRepository matchRepo) {
+                                          MatchJpaRepository matchRepo,
+                                          MatchGuestJpaRepository guestRepo) {
         this.formationRepo = formationRepo;
         this.teamRepo = teamRepo;
         this.teamPlayerRepo = teamPlayerRepo;
@@ -46,6 +51,7 @@ public class TeamFormationRepositoryAdapter implements TeamFormationRepository, 
         this.memberRepo = memberRepo;
         this.userRepo = userRepo;
         this.matchRepo = matchRepo;
+        this.guestRepo = guestRepo;
     }
 
     @Override
@@ -111,7 +117,13 @@ public class TeamFormationRepositoryAdapter implements TeamFormationRepository, 
                     .orElse(null);
             String position = member.getPosition() != null ? member.getPosition().name() : null;
             String role = member.getRole() != null ? member.getRole().name() : null;
-            players.add(new PlayerSnapshot(member.getId(), userName, member.getSkill(), position, role));
+            players.add(new PlayerSnapshot(member.getId(), null, userName, member.getSkill(), position, role));
+        }
+
+        List<MatchGuestJpaEntity> guests = guestRepo.findByMatchIdAndStatus(matchId, GuestStatus.CONFIRMED);
+        for (MatchGuestJpaEntity guest : guests) {
+            String position = guest.getPosition() != null ? guest.getPosition().name() : null;
+            players.add(new PlayerSnapshot(null, guest.getId(), guest.getName(), guest.getSkill(), position, null));
         }
 
         return new MatchPresenceSnapshot(closed, players);
@@ -124,14 +136,22 @@ public class TeamFormationRepositoryAdapter implements TeamFormationRepository, 
             List<TeamPlayerJpaEntity> playerEntities = teamPlayerRepo.findByTeamId(teamEntity.getId());
             List<TeamPlayer> players = new ArrayList<>();
             for (TeamPlayerJpaEntity playerEntity : playerEntities) {
-                GroupMemberJpaEntity member = memberRepo.findById(playerEntity.getMemberId()).orElse(null);
                 String userName = null;
                 BigDecimal skill = BigDecimal.ZERO;
-                if (member != null) {
-                    skill = member.getSkill();
-                    userName = userRepo.findById(member.getUserId())
-                            .map(u -> u.getName())
-                            .orElse(null);
+                if (playerEntity.getMemberId() != null) {
+                    GroupMemberJpaEntity member = memberRepo.findById(playerEntity.getMemberId()).orElse(null);
+                    if (member != null) {
+                        skill = member.getSkill();
+                        userName = userRepo.findById(member.getUserId())
+                                .map(u -> u.getName())
+                                .orElse(null);
+                    }
+                } else if (playerEntity.getGuestId() != null) {
+                    MatchGuestJpaEntity guest = guestRepo.findById(playerEntity.getGuestId()).orElse(null);
+                    if (guest != null) {
+                        skill = guest.getSkill();
+                        userName = guest.getName();
+                    }
                 }
                 players.add(playerEntity.toDomain(userName, skill));
             }

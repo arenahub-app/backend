@@ -113,7 +113,7 @@ public class TeamFormationService implements
                 .orElseThrow(FormationNotFoundException::new);
 
         try {
-            formation.movePlayer(cmd.memberId(), cmd.toTeamId());
+            formation.movePlayer(cmd.memberId(), cmd.guestId(), cmd.toTeamId());
         } catch (IllegalStateException ex) {
             switch (ex.getMessage()) {
                 case "player-not-in-formation" -> throw new PlayerNotInFormationException();

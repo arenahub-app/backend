@@ -26,14 +26,17 @@ public class TeamPlayerJpaEntity {
     @Column(name = "group_id", nullable = false, columnDefinition = "uuid")
     private UUID groupId;
 
-    @Column(name = "member_id", nullable = false, columnDefinition = "uuid")
+    @Column(name = "member_id", columnDefinition = "uuid")
     private UUID memberId;
+
+    @Column(name = "guest_id", columnDefinition = "uuid")
+    private UUID guestId;
 
     @Column(length = 20)
     private String position;
 
     public TeamPlayer toDomain(String userName, BigDecimal skill) {
-        return TeamPlayer.reconstitute(id, teamId, groupId, memberId, userName, skill, position);
+        return TeamPlayer.reconstitute(id, teamId, groupId, memberId, guestId, userName, skill, position);
     }
 
     public static TeamPlayerJpaEntity fromDomain(TeamPlayer player) {
@@ -42,6 +45,7 @@ public class TeamPlayerJpaEntity {
         e.teamId = player.getTeamId();
         e.groupId = player.getGroupId();
         e.memberId = player.getMemberId();
+        e.guestId = player.getGuestId();
         e.position = player.getPosition();
         return e;
     }

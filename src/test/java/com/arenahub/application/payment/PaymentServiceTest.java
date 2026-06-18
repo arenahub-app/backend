@@ -4,6 +4,7 @@ import com.arenahub.application.exception.*;
 import com.arenahub.application.match.port.out.GroupMemberPort;
 import com.arenahub.application.match.port.out.GroupMemberPort.GroupMemberView;
 import com.arenahub.application.payment.port.in.*;
+import com.arenahub.application.match.port.out.GuestRepository;
 import com.arenahub.application.payment.port.out.ChargeRepository;
 import com.arenahub.application.payment.port.out.ChargeRepository.ChargeView;
 import com.arenahub.application.payment.port.out.FinancialEntryRepository;
@@ -44,6 +45,7 @@ class PaymentServiceTest {
     @Mock GroupJpaRepository groupRepo;
     @Mock StoragePort storagePort;
     @Mock com.arenahub.application.payment.port.out.PresencePort presencePort;
+    @Mock GuestRepository guestRepository;
 
     private PaymentService service;
 
@@ -57,7 +59,7 @@ class PaymentServiceTest {
     @BeforeEach
     void setUp() {
         service = new PaymentService(chargeRepository, financialEntryRepository,
-                groupMemberPort, groupRepo, storagePort, presencePort);
+                groupMemberPort, groupRepo, storagePort, presencePort, guestRepository);
     }
 
     // ── Submit Receipt ────────────────────────────────────────────────────────
