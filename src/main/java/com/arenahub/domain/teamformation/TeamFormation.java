@@ -52,12 +52,14 @@ public class TeamFormation {
         return f;
     }
 
-    public void movePlayer(UUID memberId, UUID toTeamId) {
+    public void movePlayer(UUID memberId, UUID guestId, UUID toTeamId) {
         Team fromTeam = null;
         TeamPlayer movingPlayer = null;
         for (Team team : teams) {
             for (TeamPlayer player : team.getPlayers()) {
-                if (player.getMemberId().equals(memberId)) {
+                boolean matches = (memberId != null && memberId.equals(player.getMemberId()))
+                               || (guestId != null && guestId.equals(player.getGuestId()));
+                if (matches) {
                     fromTeam = team;
                     movingPlayer = player;
                     break;
@@ -83,10 +85,17 @@ public class TeamFormation {
             throw new IllegalStateException("cannot-empty-team");
         }
 
-        fromTeam.removePlayer(memberId);
-        toTeam.addPlayer(TeamPlayer.create(toTeamId, movingPlayer.getGroupId(),
-                movingPlayer.getMemberId(), movingPlayer.getUserName(),
-                movingPlayer.getSkill(), movingPlayer.getPosition()));
+        if (movingPlayer.getMemberId() != null) {
+            fromTeam.removePlayer(movingPlayer.getMemberId());
+            toTeam.addPlayer(TeamPlayer.create(toTeamId, movingPlayer.getGroupId(),
+                    movingPlayer.getMemberId(), movingPlayer.getUserName(),
+                    movingPlayer.getSkill(), movingPlayer.getPosition()));
+        } else {
+            fromTeam.removeGuestPlayer(movingPlayer.getGuestId());
+            toTeam.addPlayer(TeamPlayer.createForGuest(toTeamId, movingPlayer.getGroupId(),
+                    movingPlayer.getGuestId(), movingPlayer.getUserName(),
+                    movingPlayer.getSkill(), movingPlayer.getPosition()));
+        }
 
         this.formationType = FormationType.MANUAL_ADJUSTED;
     }

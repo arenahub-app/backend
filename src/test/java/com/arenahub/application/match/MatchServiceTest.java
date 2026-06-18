@@ -5,6 +5,7 @@ import com.arenahub.application.match.port.in.*;
 import com.arenahub.application.match.port.out.ChargePort;
 import com.arenahub.application.match.port.out.GroupMemberPort;
 import com.arenahub.application.match.port.out.GroupMemberPort.GroupMemberView;
+import com.arenahub.application.match.port.out.GuestRepository;
 import com.arenahub.application.match.port.out.MatchRepository;
 import com.arenahub.domain.group.vo.GroupRole;
 import com.arenahub.domain.group.vo.SkillSource;
@@ -50,6 +51,9 @@ class MatchServiceTest {
     @Mock
     ChargePort chargePort;
 
+    @Mock
+    GuestRepository guestRepository;
+
     private MatchService matchService;
 
     private final UUID groupId = UUID.randomUUID();
@@ -58,7 +62,7 @@ class MatchServiceTest {
 
     @BeforeEach
     void setUp() {
-        matchService = new MatchService(matchRepository, groupMemberPort, groupRepo, chargePort);
+        matchService = new MatchService(matchRepository, groupMemberPort, groupRepo, chargePort, guestRepository);
     }
 
     private GroupMemberView adminView() {

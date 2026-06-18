@@ -24,11 +24,11 @@ class SnakeDraftServiceTest {
     }
 
     private PlayerSnapshot player(String name, double skill) {
-        return new PlayerSnapshot(UUID.randomUUID(), name, BigDecimal.valueOf(skill), null, "PLAYER");
+        return new PlayerSnapshot(UUID.randomUUID(), null, name, BigDecimal.valueOf(skill), null, "PLAYER");
     }
 
     private PlayerSnapshot playerWithPosition(String name, double skill, String position) {
-        return new PlayerSnapshot(UUID.randomUUID(), name, BigDecimal.valueOf(skill), position, "PLAYER");
+        return new PlayerSnapshot(UUID.randomUUID(), null, name, BigDecimal.valueOf(skill), position, "PLAYER");
     }
 
     @Test
@@ -131,6 +131,21 @@ class SnakeDraftServiceTest {
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .divide(BigDecimal.valueOf(2), 4, java.math.RoundingMode.HALF_UP);
         assertThat(outfieldAvgA).isEqualByComparingTo(outfieldAvgB);
+    }
+
+    @Test
+    void distribute_withGuestPlayer_createsGuestTeamPlayer() {
+        PlayerSnapshot guest = new PlayerSnapshot(null, UUID.randomUUID(), "Carlos Convidado",
+                BigDecimal.valueOf(3.5), "MIDFIELDER", null);
+        PlayerSnapshot member = new PlayerSnapshot(UUID.randomUUID(), null, "Regular Player",
+                BigDecimal.valueOf(4.0), null, "PLAYER");
+
+        List<Team> teams = snakeDraftService.distribute(List.of(guest, member), 2, groupId, formationId);
+
+        boolean hasGuestPlayer = teams.stream()
+                .flatMap(t -> t.getPlayers().stream())
+                .anyMatch(p -> p.getGuestId() != null && p.getMemberId() == null);
+        assertThat(hasGuestPlayer).isTrue();
     }
 
     @Test

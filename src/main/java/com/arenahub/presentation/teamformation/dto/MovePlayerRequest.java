@@ -4,4 +4,4 @@ import jakarta.validation.constraints.NotNull;
 
 import java.util.UUID;
 
-public record MovePlayerRequest(@NotNull UUID memberId, @NotNull UUID toTeamId) {}
+public record MovePlayerRequest(UUID memberId, UUID guestId, @NotNull UUID toTeamId) {}

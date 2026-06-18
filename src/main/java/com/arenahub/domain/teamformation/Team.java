@@ -46,7 +46,15 @@ public class Team {
     }
 
     public void removePlayer(UUID memberId) {
-        boolean removed = players.removeIf(p -> p.getMemberId().equals(memberId));
+        boolean removed = players.removeIf(p -> memberId.equals(p.getMemberId()));
+        if (!removed) {
+            throw new IllegalStateException("player-not-in-team");
+        }
+        recalculateAverageSkill();
+    }
+
+    public void removeGuestPlayer(UUID guestId) {
+        boolean removed = players.removeIf(p -> guestId.equals(p.getGuestId()));
         if (!removed) {
             throw new IllegalStateException("player-not-in-team");
         }

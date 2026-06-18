@@ -2,22 +2,19 @@ package com.arenahub.presentation.match.dto;
 
 import com.arenahub.domain.group.vo.PlayerPosition;
 import com.arenahub.domain.match.vo.GuestStatus;
-import com.arenahub.domain.match.vo.PresenceStatus;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
-public record PresenceEntryResponse(
+public record GuestResponse(
         UUID id,
-        String type,
-        UUID memberId,
-        UUID guestId,
-        String userName,
-        String role,
+        UUID matchId,
+        String name,
         BigDecimal skill,
         PlayerPosition position,
-        PresenceStatus status,
-        GuestStatus guestStatus,
-        Instant confirmedAt
+        GuestStatus status,
+        UUID chargeId,
+        Instant confirmedAt,
+        Instant createdAt
 ) {}

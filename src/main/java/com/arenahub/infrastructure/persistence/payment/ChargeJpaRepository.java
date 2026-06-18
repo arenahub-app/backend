@@ -17,6 +17,9 @@ public interface ChargeJpaRepository extends JpaRepository<ChargeJpaEntity, UUID
     boolean existsByReferenceMatchIdAndMemberIdAndStatusIn(
             UUID referenceMatchId, UUID memberId, List<ChargeStatus> statuses);
 
+    boolean existsByReferenceMatchIdAndGuestIdAndStatusIn(
+            UUID referenceMatchId, UUID guestId, List<ChargeStatus> statuses);
+
     @Query("""
             SELECT c FROM ChargeJpaEntity c
             WHERE c.groupId = :groupId
@@ -44,4 +47,8 @@ public interface ChargeJpaRepository extends JpaRepository<ChargeJpaEntity, UUID
     List<ChargeJpaEntity> findByReferenceMatchId(UUID referenceMatchId);
 
     List<ChargeJpaEntity> findByMemberIdOrderByCreatedAtDesc(UUID memberId);
+
+    List<ChargeJpaEntity> findByGuestId(UUID guestId);
+
+    Optional<ChargeJpaEntity> findByReferenceMatchIdAndGuestId(UUID matchId, UUID guestId);
 }

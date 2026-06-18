@@ -12,6 +12,7 @@ public class Charge {
     private UUID id;
     private UUID groupId;
     private UUID memberId;
+    private UUID guestId;
     private ChargeType type;
     private BigDecimal amount;
     private UUID referenceMatchId;
@@ -28,6 +29,7 @@ public class Charge {
         c.id = UUID.randomUUID();
         c.groupId = groupId;
         c.memberId = memberId;
+        c.guestId = null;
         c.type = ChargeType.DAILY;
         c.amount = amount;
         c.referenceMatchId = matchId;
@@ -37,7 +39,23 @@ public class Charge {
         return c;
     }
 
-    public static Charge reconstitute(UUID id, UUID groupId, UUID memberId,
+    public static Charge createDailyForGuest(UUID groupId, UUID guestId,
+                                              BigDecimal amount, UUID matchId) {
+        Charge c = new Charge();
+        c.id = UUID.randomUUID();
+        c.groupId = groupId;
+        c.memberId = null;
+        c.guestId = guestId;
+        c.type = ChargeType.DAILY;
+        c.amount = amount;
+        c.referenceMatchId = matchId;
+        c.status = ChargeStatus.PENDING;
+        c.createdAt = Instant.now();
+        c.updatedAt = Instant.now();
+        return c;
+    }
+
+    public static Charge reconstitute(UUID id, UUID groupId, UUID memberId, UUID guestId,
                                        ChargeType type, BigDecimal amount,
                                        UUID referenceMatchId, String referenceMonth,
                                        ChargeStatus status,
@@ -46,6 +64,7 @@ public class Charge {
         c.id = id;
         c.groupId = groupId;
         c.memberId = memberId;
+        c.guestId = guestId;
         c.type = type;
         c.amount = amount;
         c.referenceMatchId = referenceMatchId;
@@ -68,9 +87,14 @@ public class Charge {
         return status == ChargeStatus.PENDING;
     }
 
+    public boolean isGuestCharge() {
+        return guestId != null;
+    }
+
     public UUID getId() { return id; }
     public UUID getGroupId() { return groupId; }
     public UUID getMemberId() { return memberId; }
+    public UUID getGuestId() { return guestId; }
     public ChargeType getType() { return type; }
     public BigDecimal getAmount() { return amount; }
     public UUID getReferenceMatchId() { return referenceMatchId; }

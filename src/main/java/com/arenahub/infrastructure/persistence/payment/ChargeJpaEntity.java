@@ -26,8 +26,11 @@ public class ChargeJpaEntity {
     @Column(name = "group_id", nullable = false, columnDefinition = "uuid")
     private UUID groupId;
 
-    @Column(name = "member_id", nullable = false, columnDefinition = "uuid")
+    @Column(name = "member_id", columnDefinition = "uuid")
     private UUID memberId;
+
+    @Column(name = "guest_id", columnDefinition = "uuid")
+    private UUID guestId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 15)
@@ -53,7 +56,7 @@ public class ChargeJpaEntity {
     private Instant updatedAt;
 
     public Charge toDomain() {
-        return Charge.reconstitute(id, groupId, memberId, type, amount,
+        return Charge.reconstitute(id, groupId, memberId, guestId, type, amount,
                 referenceMatchId, referenceMonth, status, createdAt, updatedAt);
     }
 
@@ -62,6 +65,7 @@ public class ChargeJpaEntity {
         e.id = charge.getId();
         e.groupId = charge.getGroupId();
         e.memberId = charge.getMemberId();
+        e.guestId = charge.getGuestId();
         e.type = charge.getType();
         e.amount = charge.getAmount();
         e.referenceMatchId = charge.getReferenceMatchId();

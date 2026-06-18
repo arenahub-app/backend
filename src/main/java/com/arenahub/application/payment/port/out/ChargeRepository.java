@@ -41,6 +41,8 @@ public interface ChargeRepository {
             UUID chargeId,
             UUID memberId,
             String memberName,
+            UUID guestId,
+            String guestName,
             com.arenahub.domain.payment.vo.ChargeType type,
             java.math.BigDecimal amount,
             UUID referenceMatchId,

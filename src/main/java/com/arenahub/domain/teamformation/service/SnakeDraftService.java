@@ -24,7 +24,6 @@ public class SnakeDraftService {
             teams.add(Team.create(formationId, groupId, name));
         }
 
-        // Goalkeepers are distributed separately and excluded from skill equalization
         List<PlayerSnapshot> goalkeepers = players.stream()
                 .filter(p -> GOALKEEPER.equals(p.position()))
                 .collect(Collectors.toList());
@@ -48,14 +47,21 @@ public class SnakeDraftService {
             trySwapsToEqualize(teams, groupId);
         }
 
-        // Distribute goalkeepers round-robin after outfield balance is settled
         for (int i = 0; i < goalkeepers.size(); i++) {
             Team team = teams.get(i % teams.size());
             PlayerSnapshot gk = goalkeepers.get(i);
-            team.addPlayer(TeamPlayer.create(team.getId(), groupId, gk.memberId(), gk.userName(), gk.skill(), gk.position()));
+            team.addPlayer(createPlayer(team.getId(), groupId, gk));
         }
 
         return teams;
+    }
+
+    private TeamPlayer createPlayer(UUID teamId, UUID groupId, PlayerSnapshot p) {
+        if (p.memberId() != null) {
+            return TeamPlayer.create(teamId, groupId, p.memberId(), p.userName(), p.skill(), p.position());
+        } else {
+            return TeamPlayer.createForGuest(teamId, groupId, p.guestId(), p.userName(), p.skill(), p.position());
+        }
     }
 
     private void snakeDraft(List<PlayerSnapshot> players, List<Team> teams, UUID groupId) {
@@ -68,7 +74,7 @@ public class SnakeDraftService {
             int teamIndex = (round % 2 == 0) ? posInRound : (n - 1 - posInRound);
             Team team = teams.get(teamIndex);
             PlayerSnapshot p = sorted.get(i);
-            team.addPlayer(TeamPlayer.create(team.getId(), groupId, p.memberId(), p.userName(), p.skill(), p.position()));
+            team.addPlayer(createPlayer(team.getId(), groupId, p));
         }
     }
 
@@ -108,8 +114,8 @@ public class SnakeDraftService {
                         for (TeamPlayer pb : new ArrayList<>(tb.getPlayers())) {
                             if (GOALKEEPER.equals(pa.getPosition()) || GOALKEEPER.equals(pb.getPosition())) continue;
                             if (!Objects.equals(pa.getPosition(), pb.getPosition())) continue;
-                            ta.removePlayer(pa.getMemberId());
-                            tb.removePlayer(pb.getMemberId());
+                            removeFromTeam(ta, pa);
+                            removeFromTeam(tb, pb);
                             ta.addPlayer(TeamPlayer.create(ta.getId(), groupId, pb.getMemberId(), pb.getUserName(), pb.getSkill(), pb.getPosition()));
                             tb.addPlayer(TeamPlayer.create(tb.getId(), groupId, pa.getMemberId(), pa.getUserName(), pa.getSkill(), pa.getPosition()));
                             BigDecimal newDev = calcOutfieldStdDev(teams);
@@ -118,8 +124,8 @@ public class SnakeDraftService {
                                 improved = true;
                                 if (currentDev.compareTo(STD_DEV_THRESHOLD) <= 0) return;
                             } else {
-                                ta.removePlayer(pb.getMemberId());
-                                tb.removePlayer(pa.getMemberId());
+                                removeFromTeam(ta, pb);
+                                removeFromTeam(tb, pa);
                                 ta.addPlayer(TeamPlayer.create(ta.getId(), groupId, pa.getMemberId(), pa.getUserName(), pa.getSkill(), pa.getPosition()));
                                 tb.addPlayer(TeamPlayer.create(tb.getId(), groupId, pb.getMemberId(), pb.getUserName(), pb.getSkill(), pb.getPosition()));
                             }
@@ -128,6 +134,14 @@ public class SnakeDraftService {
                 }
             }
             if (!improved) break;
+        }
+    }
+
+    private void removeFromTeam(Team team, TeamPlayer player) {
+        if (player.getMemberId() != null) {
+            team.removePlayer(player.getMemberId());
+        } else {
+            team.removeGuestPlayer(player.getGuestId());
         }
     }
 }

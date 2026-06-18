@@ -5,12 +5,15 @@ import com.arenahub.application.match.port.in.*;
 import com.arenahub.application.match.port.out.ChargePort;
 import com.arenahub.application.match.port.out.GroupMemberPort;
 import com.arenahub.application.match.port.out.GroupMemberPort.GroupMemberView;
+import com.arenahub.application.match.port.out.GuestRepository;
 import com.arenahub.application.match.port.out.MatchRepository;
 import com.arenahub.domain.group.vo.GroupRole;
 import com.arenahub.domain.group.vo.GroupStatus;
 import com.arenahub.domain.match.Match;
+import com.arenahub.domain.match.MatchGuest;
 import com.arenahub.domain.match.PresenceEntry;
 import com.arenahub.domain.match.WaitingEntry;
+import com.arenahub.domain.match.vo.GuestStatus;
 import com.arenahub.domain.match.vo.Location;
 import com.arenahub.domain.match.vo.PresenceStatus;
 import com.arenahub.infrastructure.persistence.group.GroupJpaRepository;
@@ -19,6 +22,7 @@ import com.arenahub.presentation.match.dto.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -30,19 +34,23 @@ public class MatchService implements
         CancelMatchUseCase, ClosePresenceListUseCase, GetPresenceListUseCase,
         ConfirmPresenceUseCase, CancelPresenceUseCase,
         AdminForcePresenceUseCase, AdminRemovePresenceUseCase,
-        BanFromPresenceUseCase, UnbanFromPresenceUseCase {
+        BanFromPresenceUseCase, UnbanFromPresenceUseCase,
+        AddGuestUseCase, RemoveGuestUseCase {
 
     private final MatchRepository matchRepository;
     private final GroupMemberPort groupMemberPort;
     private final GroupJpaRepository groupRepo;
     private final ChargePort chargePort;
+    private final GuestRepository guestRepository;
 
     public MatchService(MatchRepository matchRepository, GroupMemberPort groupMemberPort,
-                        GroupJpaRepository groupRepo, ChargePort chargePort) {
+                        GroupJpaRepository groupRepo, ChargePort chargePort,
+                        GuestRepository guestRepository) {
         this.matchRepository = matchRepository;
         this.groupMemberPort = groupMemberPort;
         this.groupRepo = groupRepo;
         this.chargePort = chargePort;
+        this.guestRepository = guestRepository;
     }
 
     // ── Create Match ──────────────────────────────────────────────────────────
@@ -159,14 +167,19 @@ public class MatchService implements
         requireMember(cmd.groupId(), cmd.actorUserId());
         Match match = requireMatch(cmd.groupId(), cmd.matchId());
 
-        List<PresenceEntry> confirmed = matchRepository.findPresenceEntriesByMatchIdAndStatuses(
+        List<PresenceEntry> confirmedMembers = matchRepository.findPresenceEntriesByMatchIdAndStatuses(
                 match.getId(), List.of(PresenceStatus.CONFIRMED, PresenceStatus.PAYMENT_PENDING));
         List<PresenceEntry> declined = matchRepository.findPresenceEntriesByMatchIdAndStatus(
                 match.getId(), PresenceStatus.DECLINED);
         List<WaitingEntry> waiting = matchRepository.findWaitingEntriesByMatchId(match.getId());
+        List<MatchGuest> guests = guestRepository.findByMatchId(match.getId());
+
+        List<PresenceEntryResponse> confirmedList = new ArrayList<>();
+        confirmedMembers.forEach(e -> confirmedList.add(toPresenceEntryResponse(e)));
+        guests.forEach(g -> confirmedList.add(toGuestPresenceEntryResponse(g)));
 
         return new PresenceListResponse(
-                confirmed.stream().map(e -> toPresenceEntryResponse(e)).toList(),
+                confirmedList,
                 declined.stream().map(e -> toPresenceEntryResponse(e)).toList(),
                 waiting.stream().map(e -> toWaitingEntryResponse(e)).toList()
         );
@@ -195,7 +208,9 @@ public class MatchService implements
             return PresenceActionResponse.presence(toPresenceEntryResponse(entry));
         }
 
-        long occupied = matchRepository.countOccupiedByMatchId(match.getId());
+        long memberOccupied = matchRepository.countOccupiedByMatchId(match.getId());
+        long guestOccupied = guestRepository.countOccupiedByMatchId(match.getId());
+        long occupied = memberOccupied + guestOccupied;
         if (occupied < match.getMaxPlayers()) {
             PendingChargeResponse pendingCharge = createChargeIfNeeded(
                     cmd.groupId(), member.id(), match.getId());
@@ -252,7 +267,7 @@ public class MatchService implements
         GroupMemberView actor = requireMember(cmd.groupId(), cmd.actorUserId());
         requireRole(actor, GroupRole.ADMIN);
 
-        GroupMemberView target = groupMemberPort.findMemberById(cmd.memberId())
+        groupMemberPort.findMemberById(cmd.memberId())
                 .orElseThrow(MemberNotFoundException::new);
         Match match = requireMatch(cmd.groupId(), cmd.matchId());
 
@@ -317,6 +332,61 @@ public class MatchService implements
         groupMemberPort.unbanFromPresence(cmd.memberId(), cmd.groupId(), actor.userId());
     }
 
+    // ── Add Guest ─────────────────────────────────────────────────────────────
+
+    @Override
+    public GuestResponse execute(AddGuestUseCase.Command cmd) {
+        GroupMemberView actor = requireMember(cmd.groupId(), cmd.actorUserId());
+        requireRole(actor, GroupRole.ADMIN);
+        Match match = requireMatch(cmd.groupId(), cmd.matchId());
+
+        long memberOccupied = matchRepository.countOccupiedByMatchId(match.getId());
+        long guestOccupied = guestRepository.countOccupiedByMatchId(match.getId());
+        if (memberOccupied + guestOccupied >= match.getMaxPlayers()) {
+            throw new MatchFullException();
+        }
+
+        var group = groupRepo.findByIdAndDeletedAtIsNull(cmd.groupId())
+                .orElseThrow(GroupNotFoundException::new);
+        boolean hasFee = group.getMatchFee() != null;
+
+        MatchGuest guest = MatchGuest.add(match.getId(), cmd.groupId(), cmd.name(),
+                cmd.skill(), cmd.position(), actor.userId(), hasFee);
+        guest = guestRepository.save(guest);
+
+        UUID chargeId = null;
+        if (hasFee) {
+            var chargeView = chargePort.createDailyForGuest(cmd.groupId(), guest.getId(),
+                    group.getMatchFee(), match.getId());
+            chargeId = chargeView.chargeId();
+        }
+
+        return new GuestResponse(guest.getId(), guest.getMatchId(), guest.getName(),
+                guest.getSkill(), guest.getPosition(), guest.getStatus(),
+                chargeId, guest.getConfirmedAt(), guest.getCreatedAt());
+    }
+
+    // ── Remove Guest ──────────────────────────────────────────────────────────
+
+    @Override
+    public void execute(RemoveGuestUseCase.Command cmd) {
+        GroupMemberView actor = requireMember(cmd.groupId(), cmd.actorUserId());
+        requireRole(actor, GroupRole.ADMIN);
+        Match match = requireMatch(cmd.groupId(), cmd.matchId());
+
+        MatchGuest guest = guestRepository.findByIdAndMatchId(cmd.guestId(), match.getId())
+                .orElseThrow(GuestNotFoundException::new);
+
+        boolean wasConfirmed = guest.getStatus() == GuestStatus.CONFIRMED;
+
+        chargePort.cancelGuestCharge(match.getId(), guest.getId(), null);
+        guestRepository.delete(guest.getId());
+
+        if (wasConfirmed) {
+            promoteFirstFromQueue(match);
+        }
+    }
+
     // ── Private helpers ───────────────────────────────────────────────────────
 
     private GroupMemberView requireMember(UUID groupId, UUID userId) {
@@ -350,7 +420,9 @@ public class MatchService implements
     }
 
     private MatchResponse toMatchResponse(Match match, String myPresenceStatus) {
-        long confirmed = matchRepository.countOccupiedByMatchId(match.getId());
+        long confirmedMembers = matchRepository.countOccupiedByMatchId(match.getId());
+        long confirmedGuests = guestRepository.countOccupiedByMatchId(match.getId());
+        long confirmed = confirmedMembers + confirmedGuests;
         long waiting = matchRepository.countWaitingByMatchId(match.getId());
         return new MatchResponse(
                 match.getId(), match.getGroupId(), match.getScheduledAt(), match.getListClosesAt(),
@@ -360,7 +432,9 @@ public class MatchService implements
     }
 
     private MatchSummaryResponse toSummaryResponse(Match match) {
-        long confirmed = matchRepository.countOccupiedByMatchId(match.getId());
+        long confirmedMembers = matchRepository.countOccupiedByMatchId(match.getId());
+        long confirmedGuests = guestRepository.countOccupiedByMatchId(match.getId());
+        long confirmed = confirmedMembers + confirmedGuests;
         long waiting = matchRepository.countWaitingByMatchId(match.getId());
         return new MatchSummaryResponse(
                 match.getId(), match.getScheduledAt(), match.getListClosesAt(),
@@ -372,12 +446,19 @@ public class MatchService implements
     private PresenceEntryResponse toPresenceEntryResponse(PresenceEntry entry) {
         GroupMemberView member = groupMemberPort.findMemberById(entry.getMemberId()).orElse(null);
         return new PresenceEntryResponse(
-                entry.getId(), entry.getMemberId(),
+                entry.getId(), "MEMBER", entry.getMemberId(), null,
                 member != null ? member.userName() : null,
                 member != null ? member.role().name() : null,
                 member != null ? member.skill() : null,
                 member != null ? member.position() : null,
-                entry.getStatus(), entry.getConfirmedAt());
+                entry.getStatus(), null, entry.getConfirmedAt());
+    }
+
+    private PresenceEntryResponse toGuestPresenceEntryResponse(MatchGuest g) {
+        return new PresenceEntryResponse(
+                g.getId(), "GUEST", null, g.getId(),
+                g.getName(), null, g.getSkill(), g.getPosition(),
+                null, g.getStatus(), g.getConfirmedAt());
     }
 
     private WaitingEntryResponse toWaitingEntryResponse(WaitingEntry entry) {

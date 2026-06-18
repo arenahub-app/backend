@@ -5,6 +5,7 @@ import com.arenahub.domain.payment.Charge;
 import com.arenahub.domain.payment.PaymentAttempt;
 import com.arenahub.domain.payment.vo.ChargeStatus;
 import com.arenahub.infrastructure.persistence.group.GroupMemberJpaRepository;
+import com.arenahub.infrastructure.persistence.match.MatchGuestJpaRepository;
 import com.arenahub.infrastructure.persistence.match.MatchJpaRepository;
 import com.arenahub.infrastructure.persistence.user.UserJpaRepository;
 import org.springframework.data.domain.PageRequest;
@@ -23,17 +24,20 @@ public class ChargeRepositoryAdapter implements ChargeRepository {
     private final GroupMemberJpaRepository memberRepo;
     private final UserJpaRepository userRepo;
     private final MatchJpaRepository matchRepo;
+    private final MatchGuestJpaRepository guestRepo;
 
     public ChargeRepositoryAdapter(ChargeJpaRepository chargeRepo,
                                     PaymentAttemptJpaRepository attemptRepo,
                                     GroupMemberJpaRepository memberRepo,
                                     UserJpaRepository userRepo,
-                                    MatchJpaRepository matchRepo) {
+                                    MatchJpaRepository matchRepo,
+                                    MatchGuestJpaRepository guestRepo) {
         this.chargeRepo = chargeRepo;
         this.attemptRepo = attemptRepo;
         this.memberRepo = memberRepo;
         this.userRepo = userRepo;
         this.matchRepo = matchRepo;
+        this.guestRepo = guestRepo;
     }
 
     @Override
@@ -104,10 +108,20 @@ public class ChargeRepositoryAdapter implements ChargeRepository {
     }
 
     private ChargeView toView(ChargeJpaEntity e) {
-        String memberName = memberRepo.findById(e.getMemberId())
-                .flatMap(m -> userRepo.findById(m.getUserId()))
-                .map(u -> u.getName())
-                .orElse(null);
+        String memberName = null;
+        if (e.getMemberId() != null) {
+            memberName = memberRepo.findById(e.getMemberId())
+                    .flatMap(m -> userRepo.findById(m.getUserId()))
+                    .map(u -> u.getName())
+                    .orElse(null);
+        }
+
+        String guestName = null;
+        if (e.getGuestId() != null) {
+            guestName = guestRepo.findById(e.getGuestId())
+                    .map(g -> g.getName())
+                    .orElse(null);
+        }
 
         var latestResult = attemptRepo.findByChargeIdOrderBySubmittedAtDesc(e.getId())
                 .stream().findFirst()
@@ -119,8 +133,9 @@ public class ChargeRepositoryAdapter implements ChargeRepository {
                         .map(m -> m.getScheduledAt()).orElse(null)
                 : null;
 
-        return new ChargeView(e.getId(), e.getMemberId(), memberName, e.getType(),
-                e.getAmount(), e.getReferenceMatchId(), matchAt,
+        return new ChargeView(e.getId(), e.getMemberId(), memberName,
+                e.getGuestId(), guestName,
+                e.getType(), e.getAmount(), e.getReferenceMatchId(), matchAt,
                 e.getStatus(), latestResult, e.getCreatedAt());
     }
 }
