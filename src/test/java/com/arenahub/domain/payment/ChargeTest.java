@@ -66,4 +66,33 @@ class ChargeTest {
         assertThat(charge.getStatus()).isEqualTo(ChargeStatus.APPROVED);
         assertThat(charge.isPending()).isFalse();
     }
+
+    @Test
+    void createDailyForGuest_setsCorrectFields() {
+        UUID guestId = UUID.randomUUID();
+        Charge charge = Charge.createDailyForGuest(groupId, guestId, new BigDecimal("25.00"), matchId);
+
+        assertThat(charge.getId()).isNotNull();
+        assertThat(charge.getGroupId()).isEqualTo(groupId);
+        assertThat(charge.getMemberId()).isNull();
+        assertThat(charge.getGuestId()).isEqualTo(guestId);
+        assertThat(charge.getType()).isEqualTo(ChargeType.DAILY);
+        assertThat(charge.getAmount()).isEqualByComparingTo("25.00");
+        assertThat(charge.getReferenceMatchId()).isEqualTo(matchId);
+        assertThat(charge.getStatus()).isEqualTo(ChargeStatus.PENDING);
+    }
+
+    @Test
+    void isGuestCharge_returnsTrueForGuestCharge() {
+        UUID guestId = UUID.randomUUID();
+        Charge charge = Charge.createDailyForGuest(groupId, guestId, new BigDecimal("25.00"), matchId);
+        assertThat(charge.isGuestCharge()).isTrue();
+        assertThat(charge.getGuestId()).isEqualTo(guestId);
+    }
+
+    @Test
+    void isGuestCharge_returnsFalseForMemberCharge() {
+        Charge charge = Charge.createDaily(groupId, memberId, new BigDecimal("25.00"), matchId);
+        assertThat(charge.isGuestCharge()).isFalse();
+    }
 }

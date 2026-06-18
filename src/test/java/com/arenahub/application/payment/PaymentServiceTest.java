@@ -12,12 +12,14 @@ import com.arenahub.application.storage.port.out.StoragePort;
 import com.arenahub.domain.financial.FinancialEntry;
 import com.arenahub.domain.group.vo.GroupRole;
 import com.arenahub.domain.group.vo.SkillSource;
+import com.arenahub.domain.match.MatchGuest;
 import com.arenahub.domain.payment.Charge;
 import com.arenahub.domain.payment.PaymentAttempt;
 import com.arenahub.domain.payment.vo.ChargeStatus;
 import com.arenahub.domain.payment.vo.ChargeType;
 import com.arenahub.infrastructure.persistence.group.GroupJpaEntity;
 import com.arenahub.infrastructure.persistence.group.GroupJpaRepository;
+import com.arenahub.presentation.payment.dto.ChargeDetailResponse;
 import com.arenahub.presentation.payment.dto.ChargeStatusResponse;
 import com.arenahub.presentation.payment.dto.PaymentAttemptResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -199,10 +201,105 @@ class PaymentServiceTest {
         verify(financialEntryRepository, never()).save(any());
     }
 
+    // ── Guest Charge Paths ────────────────────────────────────────────────────
+
+    @Test
+    void submitReceipt_guestCharge_playerCannotSubmit() {
+        UUID guestId = UUID.randomUUID();
+        when(groupMemberPort.findMember(groupId, actorId)).thenReturn(Optional.of(playerView(actorId, memberId)));
+        when(chargeRepository.findByIdAndGroupId(chargeId, groupId))
+                .thenReturn(Optional.of(guestCharge(guestId)));
+
+        assertThatThrownBy(() -> service.execute(new SubmitReceiptUseCase.Command(
+                groupId, chargeId, actorId, new byte[]{1}, "r.jpg", "image/jpeg")))
+                .isInstanceOf(InsufficientRoleException.class);
+    }
+
+    @Test
+    void submitReceipt_guestCharge_adminCanSubmit() {
+        UUID guestId = UUID.randomUUID();
+        when(groupMemberPort.findMember(groupId, actorId)).thenReturn(Optional.of(adminView()));
+        when(chargeRepository.findByIdAndGroupId(chargeId, groupId))
+                .thenReturn(Optional.of(guestCharge(guestId)));
+        when(chargeRepository.existsPendingAttemptByChargeId(chargeId)).thenReturn(false);
+        when(storagePort.upload(anyString(), any(), anyString())).thenReturn("key");
+        when(storagePort.getPublicUrl(anyString())).thenReturn("https://cdn/key.jpg");
+        PaymentAttempt attempt = PaymentAttempt.createWithFile(chargeId, groupId, "key", "image/jpeg");
+        when(chargeRepository.saveAttempt(any())).thenReturn(attempt);
+
+        PaymentAttemptResponse resp = service.execute(new SubmitReceiptUseCase.Command(
+                groupId, chargeId, actorId, new byte[]{1, 2, 3}, "receipt.jpg", "image/jpeg"));
+
+        assertThat(resp.chargeId()).isEqualTo(chargeId);
+        verify(chargeRepository).saveAttempt(any());
+    }
+
+    @Test
+    void approveAttempt_guestCharge_confirmsGuest() {
+        UUID guestId = UUID.randomUUID();
+        when(groupMemberPort.findMember(groupId, actorId)).thenReturn(Optional.of(adminView()));
+        Charge charge = guestCharge(guestId);
+        when(chargeRepository.findByIdAndGroupId(chargeId, groupId)).thenReturn(Optional.of(charge));
+        PaymentAttempt attempt = PaymentAttempt.createWithFile(chargeId, groupId, "key", "image/jpeg");
+        when(chargeRepository.findAttemptById(attemptId)).thenReturn(Optional.of(attempt));
+        when(chargeRepository.saveAttempt(any())).thenReturn(attempt);
+        when(chargeRepository.save(any())).thenReturn(charge);
+        when(financialEntryRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        MatchGuest guest = mock(MatchGuest.class);
+        when(guestRepository.findById(guestId)).thenReturn(Optional.of(guest));
+        when(guestRepository.save(any())).thenReturn(guest);
+
+        ChargeStatusResponse resp = service.execute(new ApproveAttemptUseCase.Command(
+                groupId, chargeId, attemptId, actorId, "OK"));
+
+        assertThat(resp.status()).isEqualTo(ChargeStatus.APPROVED);
+        verify(guest).confirmAfterPayment();
+        verify(guestRepository).save(guest);
+        verify(presencePort, never()).confirmAfterPayment(any(), any());
+    }
+
+    @Test
+    void getChargeDetail_guestCharge_returnsGuestName() {
+        UUID guestId = UUID.randomUUID();
+        when(groupMemberPort.findMember(groupId, actorId)).thenReturn(Optional.of(adminView()));
+        Charge charge = guestCharge(guestId);
+        when(chargeRepository.findByIdAndGroupId(chargeId, groupId)).thenReturn(Optional.of(charge));
+        when(chargeRepository.findAttemptsByChargeId(chargeId)).thenReturn(List.of());
+        when(groupRepo.findByIdAndDeletedAtIsNull(groupId)).thenReturn(Optional.empty());
+        MatchGuest guest = mock(MatchGuest.class);
+        when(guest.getName()).thenReturn("Carlos Convidado");
+        when(guestRepository.findById(guestId)).thenReturn(Optional.of(guest));
+
+        ChargeDetailResponse resp = service.execute(new GetChargeDetailUseCase.Command(
+                groupId, chargeId, actorId));
+
+        assertThat(resp.guestId()).isEqualTo(guestId);
+        assertThat(resp.guestName()).isEqualTo("Carlos Convidado");
+        assertThat(resp.memberId()).isNull();
+    }
+
+    @Test
+    void getChargeDetail_guestCharge_playerThrowsInsufficientRole() {
+        UUID guestId = UUID.randomUUID();
+        when(groupMemberPort.findMember(groupId, actorId)).thenReturn(Optional.of(playerView(actorId, memberId)));
+        when(chargeRepository.findByIdAndGroupId(chargeId, groupId))
+                .thenReturn(Optional.of(guestCharge(guestId)));
+
+        assertThatThrownBy(() -> service.execute(new GetChargeDetailUseCase.Command(
+                groupId, chargeId, actorId)))
+                .isInstanceOf(InsufficientRoleException.class);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private Charge pendingCharge(UUID memberId) {
         return Charge.createDaily(groupId, memberId, new BigDecimal("25.00"), matchId);
+    }
+
+    private Charge guestCharge(UUID guestId) {
+        return Charge.reconstitute(chargeId, groupId, null, guestId, ChargeType.DAILY,
+                new BigDecimal("25.00"), matchId, null, ChargeStatus.PENDING,
+                java.time.Instant.now(), java.time.Instant.now());
     }
 
     private GroupMemberView adminView() {

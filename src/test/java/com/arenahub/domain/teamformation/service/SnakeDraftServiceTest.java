@@ -134,6 +134,21 @@ class SnakeDraftServiceTest {
     }
 
     @Test
+    void distribute_withGuestPlayer_createsGuestTeamPlayer() {
+        PlayerSnapshot guest = new PlayerSnapshot(null, UUID.randomUUID(), "Carlos Convidado",
+                BigDecimal.valueOf(3.5), "MIDFIELDER", null);
+        PlayerSnapshot member = new PlayerSnapshot(UUID.randomUUID(), null, "Regular Player",
+                BigDecimal.valueOf(4.0), null, "PLAYER");
+
+        List<Team> teams = snakeDraftService.distribute(List.of(guest, member), 2, groupId, formationId);
+
+        boolean hasGuestPlayer = teams.stream()
+                .flatMap(t -> t.getPlayers().stream())
+                .anyMatch(p -> p.getGuestId() != null && p.getMemberId() == null);
+        assertThat(hasGuestPlayer).isTrue();
+    }
+
+    @Test
     void distribute_unbalancedSkills_attemptsEqualization() {
         List<PlayerSnapshot> players = new ArrayList<>();
         players.add(player("P1", 6.0));
