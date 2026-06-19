@@ -6,8 +6,6 @@ import com.arenahub.application.voting.port.out.GroupMemberSkillPort;
 import com.arenahub.application.voting.port.out.GroupMemberSkillPort.GroupMemberView;
 import com.arenahub.application.voting.port.out.SkillVotingRepository;
 import com.arenahub.domain.group.vo.GroupRole;
-import com.arenahub.domain.group.vo.Skill;
-import com.arenahub.domain.group.vo.SkillSource;
 import com.arenahub.domain.voting.SkillVoting;
 import com.arenahub.domain.voting.Vote;
 import com.arenahub.domain.voting.VotingBan;

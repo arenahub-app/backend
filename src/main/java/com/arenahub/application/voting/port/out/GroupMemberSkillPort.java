@@ -1,7 +1,6 @@
 package com.arenahub.application.voting.port.out;
 
 import com.arenahub.domain.group.vo.GroupRole;
-import com.arenahub.domain.group.vo.PlayerPosition;
 import com.arenahub.domain.group.vo.Skill;
 import com.arenahub.domain.group.vo.SkillSource;
 
