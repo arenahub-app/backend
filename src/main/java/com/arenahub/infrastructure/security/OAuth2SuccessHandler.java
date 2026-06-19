@@ -50,7 +50,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         setRefreshTokenCookie(response, tokens.refreshToken());
 
         String redirectUrl = frontendProperties.baseUrl()
-                + "/login/callback?token=" + tokens.accessToken();
+                + "/auth/callback?token=" + tokens.accessToken();
         getRedirectStrategy().sendRedirect(request, response, redirectUrl);
     }
 
