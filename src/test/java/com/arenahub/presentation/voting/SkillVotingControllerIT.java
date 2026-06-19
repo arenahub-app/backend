@@ -95,7 +95,13 @@ class SkillVotingControllerIT {
 
         JsonNode groupJson = objectMapper.readTree(groupResult.getResponse().getContentAsString());
         groupId = groupJson.get("id").asText();
-        memberId = groupJson.get("members").get(0).get("id").asText();
+
+        MvcResult membersResult = mvc.perform(get("/api/v1/groups/{groupId}/members", groupId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andReturn();
+        memberId = objectMapper.readTree(membersResult.getResponse().getContentAsString())
+                .get(0).get("id").asText();
     }
 
     private String futureDeadline() {
